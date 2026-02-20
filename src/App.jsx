@@ -1,37 +1,47 @@
 import React, { useState, useEffect } from 'react';
+import { initializeApp } from "firebase/app";
+import { getDatabase, ref, onValue, set } from "firebase/database";
 import './App.css'; 
 
-// --- HOOK MÁGICO PARA SINCRONIZAR PESTAÑAS ---
-function useSharedState(key, initialValue) {
-  const [state, setState] = useState(() => {
-    try {
-      const item = window.localStorage.getItem(key);
-      return item ? JSON.parse(item) : initialValue;
-    } catch (error) {
-      return initialValue;
-    }
-  });
+// --- 1. CONFIGURACIÓN DE FIREBASE ---
+const firebaseConfig = {
+  apiKey: "AIzaSyBVOqNHgWuMFmSLvV6bw5L-BwRaydFJqrk",
+  authDomain: "fir-vraem.firebaseapp.com",
+  databaseURL: "https://fir-vraem-default-rtdb.firebaseio.com",
+  projectId: "fir-vraem",
+  storageBucket: "fir-vraem.firebasestorage.app",
+  messagingSenderId: "919723738473",
+  appId: "1:919723738473:web:e139510a577959b3aee9f8"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getDatabase(app);
+
+// --- 2. HOOK MÁGICO PARA LA NUBE ---
+function useFirebaseState(key, initialValue) {
+  const [state, setState] = useState(initialValue);
+  const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
-    const onStorageChange = (e) => {
-      if (e.key === key && e.newValue) {
-        setState(JSON.parse(e.newValue));
+    const dbRef = ref(db, key);
+    const unsubscribe = onValue(dbRef, (snapshot) => {
+      if (snapshot.exists()) {
+        setState(snapshot.val());
+      } else {
+        set(dbRef, initialValue);
+        setState(initialValue);
       }
-    };
-    window.addEventListener('storage', onStorageChange);
-    return () => window.removeEventListener('storage', onStorageChange);
+      setLoaded(true);
+    });
+    return () => unsubscribe();
   }, [key]);
 
   const setValue = (value) => {
-    try {
-      const valueToStore = value instanceof Function ? value(state) : value;
-      setState(valueToStore);
-      window.localStorage.setItem(key, JSON.stringify(valueToStore));
-    } catch (error) {
-      console.error(error);
-    }
+    const valueToStore = value instanceof Function ? value(state) : value;
+    set(ref(db, key), valueToStore);
   };
-  return [state, setValue];
+
+  return [state, setValue, loaded];
 }
 
 // --- CONFIGURACIÓN DE USUARIOS Y RAZONES ---
@@ -39,7 +49,9 @@ const ROLES = { M3: 'JEFE DEL CCFFAA', M2: 'JEFE DEL CE-VRAEM', M1: 'CMDTE 31 BR
 const RAZONES = ['Situación de Emergencia', 'Apoyo Táctico', 'Mantenimiento']; 
 
 // --- BASE DE DATOS DE REGLAS (Las 52 del Excel) ---
-const PERMISOS_BASE = [
+// TRUCO SENIOR: Le agregamos .replace('.', '_') al ID para que Firebase no colapse, 
+// y creamos un 'label' para mostrar el texto real con el punto en la pantalla.
+const RAW_PERMISOS = [
   { id: 'E-1.1', name: 'Se permite el empleo de la fuerza, hasta el nivel letal de armas de fuego pequeñas y ligeras, en defensa propia, contra objetivos militares; durante el cumplimiento de sus deberes y funciones' },
   { id: 'E-1.2', name: 'Se permite el empleo de la fuerza, hasta el nivel letal de armas de fuego pequeñas y ligeras, en defensa de la Unidad, contra objetivos militares; durante el cumplimiento de sus deberes y funciones' },
   { id: 'E-2.1', name: 'Se permite el empleo de la fuerza, hasta el nivel letal de armas de fuego pequeñas y ligeras; contra objetivos militares; para la protección y defensa de terceras personas (civiles, miembros de la PNP y otros miembros de las Fuerzas Armadas).' },
@@ -94,26 +106,30 @@ const PERMISOS_BASE = [
   { id: 'E-13.5', name: 'Realizar ataques indiscriminados' }
 ];
 
-// Inicializamos la configuración vacía para que cada jefe (M3 y M2) tenga sus propias reglas
+// Aquí aplicamos el mapeo para Firebase
+const PERMISOS_BASE = RAW_PERMISOS.map(p => ({
+  ...p,
+  id: p.id.replace('.', '_'), // E-1.1 se vuelve E-1_1 (Firebase feliz)
+  label: p.id // Guardamos el E-1.1 original para mostrarlo en pantalla (Cliente feliz)
+}));
+
 const initialConfigPerRole = PERMISOS_BASE.reduce((acc, p) => {
-  acc[p.id] = { aprobar: [], rechazar: [] }; // Guarda qué razones aprueban o rechazan
+  acc[p.id] = { aprobar: [], rechazar: [] };
   return acc;
 }, {});
 
 export default function App() {
-  const [currentUser, setCurrentUser] = useSharedState('app_currentUser', null);
+  const [currentUser, setCurrentUser] = useState(null);
   
-  const [permisos, setPermisos] = useSharedState('app_permisos', {
+  const [permisos, setPermisos, load1] = useFirebaseState('vraem_permisos', {
     [ROLES.M3]: PERMISOS_BASE.reduce((acc, p) => ({ ...acc, [p.id]: true }), {}),
     [ROLES.M2]: PERMISOS_BASE.reduce((acc, p) => ({ ...acc, [p.id]: false }), {}),
     [ROLES.M1]: PERMISOS_BASE.reduce((acc, p) => ({ ...acc, [p.id]: false }), {})
   });
-
-  const [requests, setRequests] = useSharedState('app_requests', []);
-  const [autoModeActive, setAutoModeActive] = useSharedState('app_autoModeActive', { [ROLES.M3]: false, [ROLES.M2]: false });
   
-  // Ahora autoConfig separa la configuración del Jefe CCFFAA y del Jefe VRAEM
-  const [autoConfig, setAutoConfig] = useSharedState('app_autoConfig', {
+  const [requests, setRequests, load2] = useFirebaseState('vraem_requests', []);
+  const [autoModeActive, setAutoModeActive, load3] = useFirebaseState('vraem_autoModeActive', { [ROLES.M3]: false, [ROLES.M2]: false });
+  const [autoConfig, setAutoConfig, load4] = useFirebaseState('vraem_autoConfig', {
     [ROLES.M3]: initialConfigPerRole,
     [ROLES.M2]: initialConfigPerRole
   });
@@ -122,7 +138,8 @@ export default function App() {
   const [showNotificaciones, setShowNotificaciones] = useState(false);
   const [showConfig, setShowConfig] = useState(false);
 
-  // Maneja los checks del panel de configuración
+  const isReady = load1 && load2 && load3 && load4;
+
   const handleConfigChange = (pId, accion, razon, isChecked) => {
     setAutoConfig(prev => {
       const newState = { ...prev };
@@ -131,7 +148,6 @@ export default function App() {
 
       if (isChecked) {
         configDeLaRegla[accion] = [...configDeLaRegla[accion], razon];
-        // Desmarcar de la otra lista para evitar contradicciones
         const otraAccion = accion === 'aprobar' ? 'rechazar' : 'aprobar';
         configDeLaRegla[otraAccion] = configDeLaRegla[otraAccion].filter(r => r !== razon);
       } else {
@@ -147,41 +163,75 @@ export default function App() {
   const enviarSolicitudConMotivo = () => {
     const superior = currentUser === ROLES.M1 ? ROLES.M2 : ROLES.M3;
     const { permissionId, reason } = solicitarModal;
-    
-    // Si el superior tiene el modo activo, evaluamos la razón enviada
+    const labelParaAlerta = permissionId.replace('_', '.'); // Convertimos E-1_1 a E-1.1 para la alerta
+    let bypassAutoApprove = false;
+
     if (autoModeActive[superior]) {
       const configDelSuperior = autoConfig[superior][permissionId];
       
       if (configDelSuperior.aprobar.includes(reason)) {
-        alert(`¡Liberado automáticamente! El ${superior} aprobó esta acción para "${reason}".`);
-        setPermisos(prev => ({ ...prev, [currentUser]: { ...prev[currentUser], [permissionId]: true } }));
-        setSolicitarModal({ open: false, permissionId: null, reason: RAZONES[0] });
-        return;
+        if (superior !== ROLES.M3 && !permisos[superior][permissionId]) {
+          alert(`ATENCIÓN: El ${superior} programó la auto-aprobación, pero él NO posee el permiso ${labelParaAlerta}. Pasa a revisión manual.`);
+          bypassAutoApprove = true;
+        } else {
+          alert(`¡Liberado automáticamente! El ${superior} aprobó la regla ${labelParaAlerta} para "${reason}".`);
+          setPermisos(prev => ({ ...prev, [currentUser]: { ...prev[currentUser], [permissionId]: true } }));
+          setSolicitarModal({ open: false, permissionId: null, reason: RAZONES[0] });
+          return;
+        }
       } else if (configDelSuperior.rechazar.includes(reason)) {
-        alert(`Denegado. El ${superior} tiene bloqueada la liberación para "${reason}".`);
+        alert(`Denegado. El ${superior} tiene bloqueada la liberación de ${labelParaAlerta} para "${reason}".`);
         setSolicitarModal({ open: false, permissionId: null, reason: RAZONES[0] });
         return;
       }
-      // Si la razón no está ni en aprobar ni en rechazar, cae a revisión manual por defecto
     }
 
-    // Flujo normal (o manual por defecto)
     const newReq = { id: Date.now(), from: currentUser, to: superior, permissionId, reason };
     setRequests(prev => [...prev, newReq]);
-    if(autoModeActive[superior]){
-        alert('Enviado a revisión. (El superior no tiene una regla automática para esta razón específica).');
+    
+    if (autoModeActive[superior] && !bypassAutoApprove) {
+        alert('Enviado a revisión. (El superior no tiene regla automática para esta razón).');
+    } else if (!autoModeActive[superior]) {
+        alert('Solicitud enviada exitosamente a revisión manual.');
     }
+    
     setSolicitarModal({ open: false, permissionId: null, reason: RAZONES[0] });
   };
 
   const resolverSolicitud = (reqId, aprobar) => {
     const req = requests.find(r => r.id === reqId);
     if (aprobar) {
+      if (currentUser !== ROLES.M3 && !permisos[currentUser][req.permissionId]) {
+        alert(`❌ ERROR DE SEGURIDAD: No puedes liberar la regla ${req.permissionId.replace('_', '.')} porque tú no la tienes habilitada.`);
+        return;
+      }
       setPermisos(prev => ({ ...prev, [req.from]: { ...prev[req.from], [req.permissionId]: true } }));
     }
     setRequests(prev => prev.filter(r => r.id !== reqId));
     if (requests.length === 1) setShowNotificaciones(false);
   };
+
+  const resetFirebaseDB = () => {
+    if(window.confirm("¿Seguro que deseas limpiar la base de datos de toda la nube?")) {
+      set(ref(db, 'vraem_permisos'), {
+        [ROLES.M3]: PERMISOS_BASE.reduce((acc, p) => ({ ...acc, [p.id]: true }), {}),
+        [ROLES.M2]: PERMISOS_BASE.reduce((acc, p) => ({ ...acc, [p.id]: false }), {}),
+        [ROLES.M1]: PERMISOS_BASE.reduce((acc, p) => ({ ...acc, [p.id]: false }), {})
+      });
+      set(ref(db, 'vraem_requests'), []);
+      set(ref(db, 'vraem_autoModeActive'), { [ROLES.M3]: false, [ROLES.M2]: false });
+      set(ref(db, 'vraem_autoConfig'), { [ROLES.M3]: initialConfigPerRole, [ROLES.M2]: initialConfigPerRole });
+      alert("Base de datos reiniciada con éxito.");
+    }
+  };
+
+  if (!isReady) {
+    return (
+      <div className="login-screen" style={{display: 'flex', justifyContent: 'center', alignItems: 'center'}}>
+        <h2>Conectando al Servidor Militar (Firebase)... 📡</h2>
+      </div>
+    );
+  }
 
   const misNotificaciones = requests.filter(r => r.to === currentUser);
 
@@ -194,8 +244,8 @@ export default function App() {
             Ingresar como {rol}
           </button>
         ))}
-        <button onClick={() => { localStorage.clear(); window.location.reload(); }} style={{marginTop: '50px', background: 'transparent', color: '#666', border: '1px solid #666', padding: '5px 10px', cursor: 'pointer'}}>
-          Reiniciar Base de Datos Local
+        <button onClick={resetFirebaseDB} style={{marginTop: '50px', background: 'transparent', color: '#666', border: '1px solid #666', padding: '5px 10px', cursor: 'pointer'}}>
+          Reiniciar Servidor Global
         </button>
       </div>
     );
@@ -207,9 +257,9 @@ export default function App() {
       <div className="sidebar" style={{width: '280px'}}>
         <div style={{textAlign: 'center', marginBottom: '20px'}}>
           <img 
-            src="https://cdn-icons-png.flaticon.com/512/1164/1164328.png" 
+            src="logo.png" 
             alt="Escudo" 
-            style={{width: '100px', height: 'auto', margin: '0 auto'}} 
+            style={{width: '200px', height: 'auto', margin: '0 auto'}} 
           />
         </div>
 
@@ -238,7 +288,6 @@ export default function App() {
           DESCARGAR REN
         </button>
 
-        {/* AMBOS MAYORES TIENEN EL BOTÓN DE CONFIGURAR (M3 y M2) */}
         {currentUser !== ROLES.M1 && (
           <button onClick={() => setShowConfig(true)} className="btn-config">
             ⚙️ Configurar Reglas (Auto)
@@ -265,7 +314,7 @@ export default function App() {
               {misNotificaciones.map(req => (
                 <div key={req.id} className="noti-item">
                   <p style={{margin: '0 0 5px 0', fontSize: '13px'}}><strong>{req.from}</strong> solicita:</p>
-                  <p style={{margin: '0 0 5px 0', fontSize: '14px', fontWeight: 'bold'}}>{req.permissionId}</p>
+                  <p style={{margin: '0 0 5px 0', fontSize: '14px', fontWeight: 'bold'}}>{req.permissionId.replace('_', '.')}</p>
                   <p style={{margin: '0 0 10px 0', fontSize: '12px', color: '#2563eb'}}>Motivo: {req.reason}</p>
                   <div style={{display: 'flex', gap: '5px'}}>
                     <button onClick={() => resolverSolicitud(req.id, true)} className="btn-green">Permitir</button>
@@ -286,11 +335,11 @@ export default function App() {
               return (
                 <div key={p.id} className="permiso-row" style={{background: '#f8fafc', padding: '15px', borderRadius: '6px', border: '1px solid #e2e8f0'}}>
                   <div style={{flex: 1, paddingRight: '20px'}}>
-                    <strong style={{color: '#0f172a', fontSize: '16px', display: 'block', marginBottom: '5px'}}>{p.id}</strong>
+                    {/* AQUI MOSTRAMOS EL LABEL ORIGINAL (E-1.1) PARA QUE EL CLIENTE LO VEA BIEN */}
+                    <strong style={{color: '#0f172a', fontSize: '16px', display: 'block', marginBottom: '5px'}}>{p.label}</strong>
                     <span style={{fontSize: '13px', color: '#475569', lineHeight: '1.5'}}>{p.name}</span>
                   </div>
                   <div style={{display: 'flex', flexDirection: 'column', alignItems: 'center', minWidth: '100px'}}>
-                    {/* SIEMPRE ABRE EL MODAL DE RAZÓN */}
                     <div 
                       onClick={() => !tienePermiso && currentUser !== ROLES.M3 && setSolicitarModal({ open: true, permissionId: p.id, reason: RAZONES[0] })}
                       className={`box-status ${tienePermiso ? 'box-green' : 'box-red'}`}
@@ -311,7 +360,8 @@ export default function App() {
       {solicitarModal.open && (
         <div className="modal-overlay">
           <div className="modal-content">
-            <h3 style={{marginTop: 0}}>Solicitar {solicitarModal.permissionId}</h3>
+            {/* Mostramos el texto con el punto visualmente */}
+            <h3 style={{marginTop: 0}}>Solicitar {solicitarModal.permissionId.replace('_', '.')}</h3>
             <p style={{fontSize: '14px', color: '#666'}}>Seleccione el motivo de la solicitud (requerido para evaluación automática o manual):</p>
             <select value={solicitarModal.reason} onChange={(e) => setSolicitarModal({...solicitarModal, reason: e.target.value})} style={{width: '100%', padding: '10px', marginTop: '10px', marginBottom: '20px'}}>
               {RAZONES.map(r => <option key={r} value={r}>{r}</option>)}
@@ -338,7 +388,7 @@ export default function App() {
             <div style={{display: 'flex', flexDirection: 'column', gap: '15px'}}>
               {PERMISOS_BASE.map(p => (
                 <div key={p.id} style={{background: '#f8fafc', padding: '15px', borderRadius: '8px', border: '1px solid #e2e8f0'}}>
-                  <h4 style={{margin: '0 0 10px 0', color: '#1e293b', borderBottom: '1px solid #cbd5e1', paddingBottom: '5px'}}>{p.id}</h4>
+                  <h4 style={{margin: '0 0 10px 0', color: '#1e293b', borderBottom: '1px solid #cbd5e1', paddingBottom: '5px'}}>{p.label}</h4>
                   
                   <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px'}}>
                     {/* COLUMNA APROBAR */}
