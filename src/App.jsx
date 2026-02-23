@@ -48,12 +48,13 @@ function useFirebaseState(key, initialValue) {
 const ROLES = { M3: 'JEFE DEL CCFFAA', M2: 'CG - CEVRAEM', M1: 'CG - 31 BRIG INF' };
 const RAZONES = ['Situación de Emergencia', 'Apoyo Táctico', 'Mantenimiento']; 
 
+// Mantenemos la lógica interna para proteger los datos, pero visualmente solo habrán 3 colores.
 const ST = {
   LIBERADA: 'GREEN',
   DELEGADA: 'YELLOW',
   RETENIDA: 'RED',
-  LIBERADA_LEY: 'DARK_GREEN',
-  PROHIBIDA_LEY: 'DARK_RED'
+  LIBERADA_LEY: 'GREEN_LEY',   // Lógica protegida, visualmente Verde
+  PROHIBIDA_LEY: 'RED_LEY'     // Lógica protegida, visualmente Rojo
 };
 
 const RAW_PERMISOS = [
@@ -115,11 +116,28 @@ const PERMISOS_BASE = RAW_PERMISOS.map(p => ({ ...p, id_fb: p.id.replace('.', '_
 
 const initPermisos = () => {
   const matriz = { [ROLES.M3]: {}, [ROLES.M2]: {}, [ROLES.M1]: {} };
+  
   PERMISOS_BASE.forEach(p => {
-    matriz[ROLES.M3][p.id_fb] = p.type === ST.LIBERADA_LEY ? ST.LIBERADA_LEY : p.type === ST.PROHIBIDA_LEY ? ST.PROHIBIDA_LEY : ST.LIBERADA;
-    matriz[ROLES.M2][p.id_fb] = p.type === ST.LIBERADA_LEY ? ST.LIBERADA_LEY : p.type === ST.PROHIBIDA_LEY ? ST.PROHIBIDA_LEY : ST.RETENIDA;
-    matriz[ROLES.M1][p.id_fb] = p.type === ST.LIBERADA_LEY ? ST.LIBERADA_LEY : p.type === ST.PROHIBIDA_LEY ? ST.PROHIBIDA_LEY : ST.RETENIDA;
+    // PRECONFIGURACIÓN BASE SEGÚN EXCEL
+    if (p.type === ST.LIBERADA_LEY) {
+      matriz[ROLES.M3][p.id_fb] = ST.LIBERADA_LEY;
+      matriz[ROLES.M2][p.id_fb] = ST.LIBERADA_LEY;
+      matriz[ROLES.M1][p.id_fb] = ST.LIBERADA_LEY;
+    } else if (p.type === ST.PROHIBIDA_LEY) {
+      matriz[ROLES.M3][p.id_fb] = ST.PROHIBIDA_LEY;
+      matriz[ROLES.M2][p.id_fb] = ST.PROHIBIDA_LEY;
+      matriz[ROLES.M1][p.id_fb] = ST.PROHIBIDA_LEY;
+    } else {
+      // Configuracion en Cascada (M3 Libera, M2 Retiene/Delega, M1 Retiene)
+      matriz[ROLES.M3][p.id_fb] = ST.LIBERADA;
+      matriz[ROLES.M2][p.id_fb] = ST.RETENIDA;
+      matriz[ROLES.M1][p.id_fb] = ST.RETENIDA;
+    }
   });
+
+  // PRECONFIGURACIÓN ESPECÍFICA (Ajusta los IDs específicos que M3 delega a M2, etc. según tu matriz)
+  // Ejemplo: matriz[ROLES.M2]['E-2_1'] = ST.DELEGADA;
+  
   return matriz;
 };
 
@@ -131,33 +149,35 @@ const GlobalStyles = () => (
     * { box-sizing: border-box; }
     body { margin: 0; padding: 0; font-family: system-ui, -apple-system, sans-serif; background: #0f172a; }
     
-    /* LOGIN SCREEN */
     .login-wrapper { min-height: 100vh; display: flex; justify-content: center; align-items: center; background: linear-gradient(135deg, #0f172a 0%, #020617 100%); }
     .login-box { background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(10px); padding: 40px 50px; border-radius: 16px; border: 1px solid rgba(255,255,255,0.1); box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5); text-align: center; width: 90%; max-width: 450px; }
     
-    /* APP LAYOUT */
     .app-layout { display: flex; height: 100vh; overflow: hidden; background: #f1f5f9; color: #0f172a; }
     .sidebar { width: 300px; background: white; padding: 20px; border-right: 1px solid #e2e8f0; display: flex; flex-direction: column; overflow-y: auto; z-index: 10; box-shadow: 2px 0 5px rgba(0,0,0,0.05); }
     .main-content { flex: 1; padding: 25px; overflow-y: auto; }
     
-    /* COMPONENTES INTERNOS */
     .permiso-row { background: #ffffff; padding: 18px; border-radius: 10px; border: 1px solid #e2e8f0; display: flex; align-items: center; margin-bottom: 12px; transition: all 0.2s; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
     .permiso-row:hover { border-color: #cbd5e1; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); }
     .permiso-text { flex: 1; padding-right: 20px; }
     .box-container { display: flex; flex-direction: column; align-items: center; min-width: 120px; justify-content: center; }
     
-    .box-status { width: 100%; max-width: 110px; height: 38px; border-radius: 6px; border: 2px solid rgba(0,0,0,0.1); transition: all 0.3s; cursor: pointer; margin-bottom: 5px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); display: block; margin-left: auto; margin-right: auto; }
-    .box-green { background: #22c55e; }
-    .box-yellow { background: #eab308; }
-    .box-red { background: #ef4444; }
-    .box-dark-green { background: #166534; cursor: not-allowed; }
-    .box-dark-red { background: #7f1d1d; cursor: not-allowed; }
+    /* COLORES ESTRICTOS: SOLO VERDE, AMARILLO Y ROJO */
+    .box-status { width: 100%; max-width: 110px; height: 38px; border-radius: 6px; border: 2px solid rgba(0,0,0,0.1); transition: all 0.3s; margin-bottom: 5px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); display: block; margin-left: auto; margin-right: auto; }
+    .box-green, .box-green-ley { background: #22c55e; }
+    .box-yellow { background: #eab308; cursor: pointer; }
+    .box-red, .box-red-ley { background: #ef4444; }
+    
+    /* CURSORES DE LEY PROTEGIDOS */
+    .box-green { cursor: pointer; }
+    .box-red { cursor: pointer; }
+    .box-green-ley { cursor: not-allowed; }
+    .box-red-ley { cursor: not-allowed; }
+
     .txt-status { font-size: 11px; font-weight: bold; width: 100%; text-align: center; color: #475569; display: block; margin-top: 4px; text-transform: uppercase; }
     
     .noti-container { display: flex; gap: 15px; overflow-x: auto; padding-bottom: 10px; }
     .noti-item { min-width: 280px; background: #f8fafc; border: 1px solid #cbd5e1; padding: 15px; border-radius: 8px; box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
     
-    /* MODALES */
     .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(15, 23, 42, 0.8); backdrop-filter: blur(4px); display: flex; justify-content: center; align-items: center; z-index: 1000; padding: 15px; }
     .modal-content-sm { background: white; padding: 25px; border-radius: 12px; width: 100%; max-width: 400px; max-height: 90vh; overflow-y: auto; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.3); }
     .modal-content-lg { background: white; border-radius: 12px; width: 100%; max-width: 800px; max-height: 90vh; display: flex; flex-direction: column; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.3); overflow: hidden; }
@@ -166,18 +186,15 @@ const GlobalStyles = () => (
     @keyframes blink-border { 0% { border-color: #3b82f6; box-shadow: 0 0 12px #3b82f6; } 50% { border-color: transparent; box-shadow: none; } 100% { border-color: #3b82f6; box-shadow: 0 0 12px #3b82f6; } }
     .flash-active { animation: blink-border 1.5s infinite; border: 2px solid #3b82f6; }
     
-    /* RESPONSIVE CELULAR MAGIA */
     @media (max-width: 768px) {
       .login-box { padding: 30px 20px; }
       .app-layout { flex-direction: column; overflow-y: auto; height: auto; min-height: 100vh; }
       .sidebar { width: 100%; height: auto; border-right: none; border-bottom: 2px solid #e2e8f0; padding: 15px; box-shadow: none; }
       .sidebar img { width: 100px !important; }
       .main-content { padding: 15px; overflow-y: visible; }
-      
       .permiso-row { flex-direction: column; text-align: center; gap: 15px; padding: 20px 15px; }
       .permiso-text { padding-right: 0; }
       .box-container { width: 100%; border-top: 1px solid #f1f5f9; padding-top: 15px; }
-      
       .grid-config { grid-template-columns: 1fr; gap: 15px; }
       .noti-item { min-width: 100%; margin-bottom: 10px; }
       .noti-container { flex-direction: column; }
@@ -189,10 +206,10 @@ export default function App() {
   const [currentUser, setCurrentUser] = useState(null);
   const [isDownloading, setIsDownloading] = useState(false);
   
-  const [permisos, setPermisos, load1] = useFirebaseState('vraem_permisos_v3', initPermisos());
-  const [requests, setRequests, load2] = useFirebaseState('vraem_requests_v3', []);
-  const [autoModeActive, setAutoModeActive, load3] = useFirebaseState('vraem_autoModeActive_v3', { [ROLES.M3]: false, [ROLES.M2]: false });
-  const [autoConfig, setAutoConfig, load4] = useFirebaseState('vraem_autoConfig_v3', { [ROLES.M3]: initialConfigPerRole, [ROLES.M2]: initialConfigPerRole });
+  const [permisos, setPermisos, load1] = useFirebaseState('vraem_permisos_v4', initPermisos());
+  const [requests, setRequests, load2] = useFirebaseState('vraem_requests_v4', []);
+  const [autoModeActive, setAutoModeActive, load3] = useFirebaseState('vraem_autoModeActive_v4', { [ROLES.M3]: false, [ROLES.M2]: false });
+  const [autoConfig, setAutoConfig, load4] = useFirebaseState('vraem_autoConfig_v4', { [ROLES.M3]: initialConfigPerRole, [ROLES.M2]: initialConfigPerRole });
 
   const [solicitarModal, setSolicitarModal] = useState({ open: false, permissionId: null, label: '', reason: RAZONES[0] });
   const [showConfig, setShowConfig] = useState(false);
@@ -400,10 +417,10 @@ export default function App() {
 
   const resetFirebaseDB = () => {
     if(window.confirm("¿Limpiar base de datos completa y reiniciar sistema?")) {
-      set(ref(db, 'vraem_permisos_v3'), initPermisos());
-      set(ref(db, 'vraem_requests_v3'), []);
-      set(ref(db, 'vraem_autoModeActive_v3'), { [ROLES.M3]: false, [ROLES.M2]: false });
-      set(ref(db, 'vraem_autoConfig_v3'), { [ROLES.M3]: initialConfigPerRole, [ROLES.M2]: initialConfigPerRole });
+      set(ref(db, 'vraem_permisos_v4'), initPermisos());
+      set(ref(db, 'vraem_requests_v4'), []);
+      set(ref(db, 'vraem_autoModeActive_v4'), { [ROLES.M3]: false, [ROLES.M2]: false });
+      set(ref(db, 'vraem_autoConfig_v4'), { [ROLES.M3]: initialConfigPerRole, [ROLES.M2]: initialConfigPerRole });
     }
   };
 
@@ -532,8 +549,8 @@ export default function App() {
                 
                 if (estado === ST.LIBERADA) { boxClass = 'box-green'; textStatus = 'DELEGAR (ACTIVO)'; }
                 else if (estado === ST.DELEGADA) { boxClass = 'box-yellow'; textStatus = 'REVOCAR'; }
-                else if (estado === ST.LIBERADA_LEY) { boxClass = 'box-dark-green'; textStatus = 'LIBRE POR LEY'; }
-                else if (estado === ST.PROHIBIDA_LEY) { boxClass = 'box-dark-red'; textStatus = 'PROHIBIDO (LEY)'; }
+                else if (estado === ST.LIBERADA_LEY) { boxClass = 'box-green-ley'; textStatus = 'LIBRE POR LEY'; }
+                else if (estado === ST.PROHIBIDA_LEY) { boxClass = 'box-red-ley'; textStatus = 'PROHIBIDO (LEY)'; }
 
                 const handleBoxClick = () => {
                   if (estado === ST.LIBERADA_LEY || estado === ST.PROHIBIDA_LEY) return; 
