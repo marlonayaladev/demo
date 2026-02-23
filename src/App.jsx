@@ -48,104 +48,107 @@ function useFirebaseState(key, initialValue) {
 const ROLES = { M3: 'JEFE DEL CCFFAA', M2: 'CG - CEVRAEM', M1: 'CG - 31 BRIG INF' };
 const RAZONES = ['Situación de Emergencia', 'Apoyo Táctico', 'Mantenimiento']; 
 
-// ESTADOS ÚNICOS: SOLO ROJO, VERDE Y AMARILLO
+// Mantenemos los tipos originales para no romper tu RAW_PERMISOS, 
+// pero en la lógica solo usaremos GREEN, YELLOW y RED.
 const ST = {
   LIBERADA: 'GREEN',
   DELEGADA: 'YELLOW',
-  RETENIDA: 'RED'
+  RETENIDA: 'RED',
+  LIBERADA_LEY: 'LIBERADA_LEY',
+  PROHIBIDA_LEY: 'PROHIBIDA_LEY'
 };
 
 const RAW_PERMISOS = [
-  { id: "E-1.1", name: "Se permite el empleo de la fuerza, hasta el nivel letal de armas de fuego pequeñas y ligeras, en defensa propia, contra objetivos militares; durante el cumplimiento de sus deberes y funciones", type: "NORMAL" },
-  { id: "E-1.2", name: "Se permite el empleo de la fuerza, hasta el nivel letal de armas de fuego pequeñas y ligeras, en defensa de la Unidad, contra objetivos militares; durante el cumplimiento de sus deberes y funciones", type: "NORMAL" },
-  { id: "E-2.1", name: "Se permite el empleo de la fuerza, hasta el nivel letal de armas de fuego pequeñas y ligeras; contra objetivos militares; para la protección y defensa de terceras personas (civiles, miembros de la PNP y otros miembros de las Fuerzas Armadas).", type: "NORMAL" },
-  { id: "E-2.2", name: "Se permite el empleo de la fuerza, hasta el nivel letal de armas convencionales y otras capacidades de nivel operacional; contra objetivos militares; para la protección y defensa de terceras personas (civiles, miembros de la PNP y otros miembros de las Fuerzas Armadas).", type: "NORMAL" },
-  { id: "E-2.2.1", name: "Se permite el empleo de la fuerza, hasta el nivel letal de armas convencionales de nivel operacional, y otras capacidades de este nivel; contra objetivos militares; para la protección y defensa de terceras personas (civiles, miembros de la PNP y otros miembros de las Fuerzas Armadas).", type: "NORMAL" },
-  { id: "E-2.2.2", name: "Se permite el empleo de la fuerza, hasta el nivel letal de armas pesadas; contra objetivos militares; para la protección y defensa de terceras personas (civiles, miembros de la PNP y otros miembros de las Fuerzas Armadas).", type: "NORMAL" },
-  { id: "E-2.3", name: "Se permite el empleo de la fuerza hasta el nivel letal de armas convencionales y otras capacidades de nivel estratégico; contra objetivos militares; para la protección y defensa de terceras personas (civiles, miembros de la PNP y otros miembros de las Fuerzas Armadas).", type: "NORMAL" },
-  { id: "E-3.1", name: "Se permite el empleo de la fuerza, hasta el nivel letal de las armas de fuego pequeñas y ligeras; contra objetivos militares; para el cumplimiento de la misión.", type: "NORMAL" },
-  { id: "E-3.2", name: "Se permite el empleo de la fuerza, hasta el nivel letal de las armas pesadas y convencionales de nivel operacional y otras capacidades; contra objetivos militares; para el cumplimiento de la misión.", type: "NORMAL" },
-  { id: "E-3.2.1", name: "Se permite el empleo de la fuerza, hasta el nivel letal de armas convencionales de nivel operacional, y otras capacidades de este nivel; contra objetivos militares; para el cumplimiento de la misión.", type: "NORMAL" },
-  { id: "E-3.2.2", name: "Se permite el empleo de la fuerza, hasta el nivel letal de armas pesadas; contra objetivos militares; para el cumplimiento de la misión.", type: "NORMAL" },
-  { id: "E-3.3", name: "Se permite el empleo de la fuerza hasta el nivel letal de las armas convencionales y otras capacidades de nivel estratégico; contra objetivos militares; para el cumplimiento de la misión.", type: "NORMAL" },
-  { id: "E-3.4", name: "Se permite el empleo de la fuerza, hasta el nivel letal; contra objetivos militares (personas) que, durante el cumplimiento de la misión, estando fuera de combate (rendidos, heridos o detenidos), pongan en peligro inminente de muerte o lesiones graves a otras personas.", type: "NORMAL" },
-  { id: "E-4.1", name: "Se permite el empleo de la fuerza, hasta el nivel letal de armas de fuego pequeñas y ligeras; contra los integrantes de grupos hostiles, que interfieran con la libertad de movimiento y maniobra de una fuerza militar y/o la libertad de tránsito de personas, vehículos, embarcaciones y otros.", type: "NORMAL" },
-  { id: "E-4.2", name: "Se permite el empleo de la fuerza hasta el nivel letal de armas pesadas y convencionales de nivel operacional, y otras capacidades; contra los integrantes de grupos hostiles que, interfieran con la libertad de movimiento y maniobra de una fuerza militar y/o la libertad de tránsito de personas, vehículos, embarcaciones y otros.", type: "NORMAL" },
-  { id: "E-4.2.1", name: "Se permite el empleo de la fuerza hasta el nivel letal de armas convencionales de nivel operacional, y otras capacidades de este nivel; contra los integrantes de grupos hostiles que, interfieran con la libertad de movimiento y maniobra de una fuerza militar y/o la libertad de tránsito de personas, vehículos, embarcaciones y otros.", type: "NORMAL" },
-  { id: "E-4.2.2", name: "Se permite el empleo de la fuerza hasta el nivel letal de armas pesadas; contra los integrantes de grupos hostiles que, interfieran con la libertad de movimiento y maniobra de una fuerza militar y/o la libertad de tránsito de personas, vehículos, embarcaciones y otros.", type: "NORMAL" },
-  { id: "E-4.3", name: "Se permite el empleo de la fuerza hasta el nivel letal de armas convencionales y otras capacidades de nivel estratégico; contra los miembros de grupos hostiles, que interfieran con la libertad de movimiento y maniobra de una fuerza militar y/o la libertad de tránsito de personas, vehículos, embarcaciones y otros.", type: "NORMAL" },
-  { id: "E-5.1", name: "Se permite el empleo de la fuerza letal de armas de fuego pequeñas y ligeras; contra objetivos militares que, estando fuera de combate (rendidos, heridos o detenidos), durante las operaciones de intervención y la búsqueda de personas; pongan en peligro inminente de muerte o lesiones graves a otras personas.", type: "NORMAL" },
-  { id: "E-5.2", name: "Se permite el empleo de la fuerza letal de armas de fuego pequeñas y ligeras; contra objetivos militares; durante su búsqueda e intervención; siempre que, no se hayan rendido o no se encuentren fuera de combate.", type: "NORMAL" },
-  { id: "E-5.3", name: "Se permite el empleo de la fuerza hasta el nivel letal de las armas de fuego pequeñas y ligeras; contra objetivos militares; para evitar su escape.", type: "NORMAL" },
-  { id: "E-5.4", name: "Se permite el empleo de la fuerza hasta el nivel letal de armas pesadas y convencionales de nivel operacional, y otras capacidades; contra objetivos militares; durante su búsqueda e intervención.", type: "NORMAL" },
-  { id: "E-5.4.1", name: "Se permite el empleo de la fuerza hasta el nivel letal de armas convencionales de nivel operacional, y otras capacidades de este nivel; contra objetivos militares; durante su búsqueda e intervención.", type: "NORMAL" },
-  { id: "E-5.4.2", name: "Se permite el empleo de la fuerza hasta el nivel letal de armas pesadas; contra objetivos militares; durante su búsqueda e intervención.", type: "NORMAL" },
-  { id: "E-5.5", name: "Se permite el empleo de la fuerza hasta el nivel letal de las armas convencionales y otras capacidades de nivel estratégico; contra objetivos militares; durante su búsqueda e intervención.", type: "NORMAL" },
-  { id: "E-6.1", name: "Se permite el empleo de la fuerza, hasta el nivel letal de armas de fuego pequeñas y ligeras; contra objetivos militares; para liberar personas retenidas ilegalmente o tomadas como rehenes.", type: "NORMAL" },
-  { id: "E-6.2", name: "Se permite el empleo de la fuerza, hasta el nivel letal de armas convencionales y otras capacidades de nivel operacional; contra objetivos militares; para liberar personas retenidas ilegalmente o tomadas como rehenes.", type: "NORMAL" },
-  { id: "E-6.3", name: "Se permite el empleo de la fuerza, hasta el nivel letal de armas convencionales y otras capacidades de nivel estratégico; contra objetivos militares; para liberar personas retenidas ilegalmente o tomados como rehenes.", type: "NORMAL" },
-  { id: "E-6.4", name: "Se permite el empleo de la fuerza, hasta el nivel letal; contra objetivos militares; para liberar personas retenidas ilegalmente o tomadas como rehenes; siempre que, exista peligro inminente de muerte o lesiones graves de los rehenes.", type: "NORMAL" },
-  { id: "E-7.1", name: "Se permite el empleo de la fuerza, hasta el nivel letal de armas de fuego pequeñas y ligeras, contra objetivos militares; para proteger instalaciones de uso militar, vehículos, buques, embarcaciones y/o aeronaves de las Fuerzas Armadas; así como, instalaciones estratégicas, servicios públicos esenciales, activos críticos nacionales y recursos clave entre otros.", type: "NORMAL" },
-  { id: "E-7.2", name: "Se permite el empleo de la fuerza, hasta el nivel letal de armas pesadas y convencionales de nivel operacional, y otras capacidades; contra los objetivos militares; para proteger instalaciones de uso militar, vehículos, buques, embarcaciones y/o aeronaves de las Fuerzas Armadas; así como, instalaciones estratégicas, servicios públicos esenciales, activos críticos nacionales y recursos clave entre otros.", type: "NORMAL" },
-  { id: "E-7.2.1", name: "Se permite el empleo de la fuerza, hasta el nivel letal de armas convencionales de nivel operacional, y otras capacidades de este nivel; contra los objetivos militares; para proteger instalaciones de uso militar, vehículos, buques, embarcaciones y/o aeronaves de las Fuerzas Armadas; así como, instalaciones estratégicas, servicios públicos esenciales, activos críticos nacionales y recursos clave entre otros.", type: "NORMAL" },
-  { id: "E-7.2.2", name: "Se permite el empleo de la fuerza, hasta el nivel letal de armas pesadas; contra los objetivos militares; para proteger instalaciones de uso militar, vehículos, buques, embarcaciones y/o aeronaves de las Fuerzas Armadas; así como, instalaciones estratégicas, servicios públicos esenciales, activos críticos nacionales y recursos clave entre otros.", type: "NORMAL" },
-  { id: "E-7.3", name: "Se permite el empleo de la fuerza, hasta el nivel letal de armas convencionales y otras capacidades de nivel estratégico; contra objetivos militares; para proteger instalaciones de uso militar, vehículos, buques, embarcaciones y/o aeronaves de las Fuerzas Armadas; así como, instalaciones estratégicas, servicios públicos esenciales, activos críticos nacionales y recursos clave entre otros.", type: "NORMAL" },
-  { id: "E-7.4", name: "Se permite el empleo de la fuerza, hasta el nivel letal de armas de fuego pequeñas y ligeras; contra objetivos militares; para liberar, recuperar, ocupar, controlar y registrar instalaciones, vehículos, buques, embarcaciones y/o aeronaves, entre otros.", type: "NORMAL" },
-  { id: "E-7.5", name: "Se permite el empleo de la fuerza, hasta el nivel letal de armas pesadas y convencionales de nivel operacional, y otras capacidades; contra objetivos militares; para liberar, recuperar, ocupar, controlar y registrar instalaciones, vehículos, buques, embarcaciones y/o aeronaves, entre otros.", type: "NORMAL" },
-  { id: "E-7.5.1", name: "Se permite el empleo de la fuerza, hasta el nivel letal de armas convencionales de nivel operacional, y otras capacidades de este nivel; contra objetivos militares; para liberar, recuperar, ocupar, controlar y registrar instalaciones, vehículos, buques, embarcaciones y/o aeronaves, entre otros.", type: "NORMAL" },
-  { id: "E-7.5.2", name: "Se permite el empleo de la fuerza, hasta el nivel letal de armas pesadas, y otras capacidades; contra objetivos militares; para liberar, recuperar, ocupar, controlar y registrar instalaciones, vehículos, buques, embarcaciones y/o aeronaves, entre otros.", type: "NORMAL" },
-  { id: "E-7.6", name: "Se permite el empleo de la fuerza, hasta el nivel letal de armas convencionales y otras capacidades de nivel estratégico; contra objetivos militares; para liberar, recuperar, ocupar, controlar y registrar instalaciones, vehículos, buques, embarcaciones y/o aeronaves, entre otros.", type: "NORMAL" },
-  { id: "E-8.1", name: "Se permite el empleo de la fuerza, hasta el nivel letal de armas de fuego pequeñas y ligeras; contra objetivos militares; durante la configuración y ejecución de maniobras tácticas para el cumplimiento de la misión.", type: "NORMAL" },
-  { id: "E-8.2", name: "Se permite el empleo de la fuerza, hasta el nivel letal de armas pesadas y convencionales de nivel operacional, y otras capacidades; objetivos militares; durante la configuración y ejecución de maniobras de nivel operacional y táctico para el cumplimiento de la misión.", type: "NORMAL" },
-  { id: "E-8.2.1", name: "Se permite el empleo de la fuerza, hasta el nivel letal de armas convencionales de nivel operacional, y otras capacidades de este nivel; objetivos militares; durante la configuración y ejecución de maniobras de nivel operacional y táctico para el cumplimiento de la misión.", type: "NORMAL" },
-  { id: "E-8.2.2", name: "Se permite el empleo de la fuerza, hasta el nivel letal de armas pesadas; objetivos militares; durante la configuración y ejecución de maniobras de nivel operacional y táctico para el cumplimiento de la misión.", type: "NORMAL" },
-  { id: "E-8.3", name: "Se permite el empleo de la fuerza, hasta el nivel letal de armas convencionales y otras capacidades de nivel estratégico; contra objetivos militares; durante la configuración y ejecución de maniobras estratégicas, operacionales y tácticas para el cumplimiento de la misión", type: "NORMAL" },
-  { id: "E-9.1", name: "Se permite el empleo de iluminación con pirotécnicos, granadas o munición de iluminación; durante las acciones de seguimiento, vigilancia y desvío de objetivos militares en espacios acuáticos nacionales.", type: "NORMAL" },
-  { id: "E-9.2", name: "Se permite el empleo de la fuerza, hasta el nivel letal de armas pequeñas y ligeras; contra objetivos militares; durante las acciones de seguimiento, vigilancia y desvío; en espacios acuáticos nacionales.", type: "NORMAL" },
-  { id: "E-9.3", name: "Se permite el empleo de la fuerza, hasta el nivel letal de armas pesadas y convencionales de nivel operacional, y otras capacidades; contra objetivos militares; durante las acciones de seguimiento, vigilancia y desvío; en espacios acuáticos nacionales.", type: "NORMAL" },
-  { id: "E-9.3.1", name: "Se permite el empleo de la fuerza, hasta el nivel letal de armas convencionales de nivel operacional, y otras capacidades de este nivel; contra objetivos militares; durante las acciones de seguimiento, vigilancia y desvío; en espacios acuáticos nacionales.", type: "NORMAL" },
-  { id: "E-9.3.2", name: "Se permite el empleo de la fuerza, hasta el nivel letal de armas pesadas; contra objetivos militares; durante las acciones de seguimiento, vigilancia y desvío; en espacios acuáticos nacionales.", type: "NORMAL" },
-  { id: "E-9.4", name: "Se permite el empleo de fuego incapacitante durante las acciones de seguimiento, vigilancia y desvío de embarcaciones tripulados por objetivos militares; en espacios acuáticos nacionales.", type: "NORMAL" },
-  { id: "E-9.5", name: "Se permite el empleo de la fuerza, hasta el nivel letal de armas convencionales y otras capacidades de nivel estratégico; contra objetivos militares; durante las acciones de seguimiento, vigilancia y desvío; en espacios acuáticos nacionales.", type: "NORMAL" },
-  { id: "E-10.1", name: "Se permite el empleo de iluminación con pirotécnicos, granadas o munición de iluminación; durante las acciones de interdicción de objetivos militares; en espacios acuáticos nacionales.", type: "NORMAL" },
-  { id: "E-10.2", name: "Se permite el empleo de la fuerza, hasta el nivel letal de armas pequeñas y ligeras; contra objetivos militares; durante las acciones de interdicción; en espacios acuáticos nacionales.", type: "NORMAL" },
-  { id: "E-10.3", name: "Se permite el empleo de la fuerza, hasta el nivel letal de armas pesadas y convencionales de nivel operacional, y otras capacidades; contra objetivos militares; durante las acciones de interdicción; en espacios acuáticos nacionales.", type: "NORMAL" },
-  { id: "E-10.3.1", name: "Se permite el empleo de la fuerza, hasta el nivel letal de armas convencionales de nivel operacional, y otras capacidades; contra objetivos militares; durante las acciones de interdicción; en espacios acuáticos nacionales.", type: "NORMAL" },
-  { id: "E-10.3.2", name: "Se permite el empleo de la fuerza, hasta el nivel letal de armas pesadas; contra objetivos militares; durante las acciones de interdicción; en espacios acuáticos nacionales.", type: "NORMAL" },
-  { id: "E-10.4", name: "Se permite el empleo de fuego incapacitante durante las acciones de interdicción de embarcaciones tripulados por objetivos militares; en espacios acuáticos nacionales.", type: "NORMAL" },
-  { id: "E-10.5", name: "Se permite el empleo de la fuerza, hasta el nivel letal de armas convencionales y otras capacidades de nivel estratégico; contra objetivos militares; durante las acciones de interdicción; en espacios acuáticos nacionales", type: "NORMAL" },
-  { id: "E-10.6", name: "Se permite el empleo de la fuerza, hasta el nivel letal; contra objetivos militares; durante las acciones de interdicción en espacios acuáticos nacionales; siempre que, exista peligro inminente de muerte o lesiones graves de terceras personas.", type: "NORMAL" },
-  { id: "E-11.1", name: "Se permite el empleo de la fuerza, hasta el nivel de disparos de advertencia, en el espacio aéreo nacional; durante las medidas de identificación, intervención y persuasión de objetivos militares.", type: "NORMAL" },
-  { id: "E-11.2", name: "Se permite el empleo de la fuerza letal, en el espacio aéreo nacional; para neutralizar objetivos militares; siempre que, las medidas de identificación, intervención o persuasión, respectivamente, no hayan logrado los efectos correspondientes.", type: "NORMAL" },
-  { id: "E-11.3", name: "Se permite el empleo de la fuerza letal, en el espacio aéreo nacional; para neutralizar objetivos militares; siempre que, exista peligro inminente de muerte o lesiones graves de terceras personas.", type: "NORMAL" },
-  { id: "E-12.1", name: "Se permite el uso de la fuerza, hasta el nivel letal de armas de fuego pequeñas y ligeras, contra objetivos militares; para su captura, conquista, destrucción, degradación, neutralización o control; durante el desarrollo de operaciones militares planificadas.", type: "NORMAL" },
-  { id: "E-12.2", name: "Se permite el uso de la fuerza, hasta el nivel letal de armas pesadas y convencionales de nivel operacional, y otras capacidades, contra objetivos militares; para su captura, conquista, destrucción, degradación, neutralización o control; durante el desarrollo de operaciones militares planificadas.", type: "NORMAL" },
-  { id: "E-12.2.1", name: "Se permite el uso de la fuerza, hasta el nivel letal de armas convencionales de nivel operacional, y otras capacidades de este nivel; contra objetivos militares; para su captura, conquista, destrucción, degradación, neutralización o control; durante el desarrollo de operaciones militares planificadas.", type: "NORMAL" },
-  { id: "E-12.2.2", name: "Se permite el uso de la fuerza, hasta el nivel letal de armas pesadas, contra objetivos militares; para su captura, conquista, destrucción, degradación, neutralización o control; durante el desarrollo de operaciones militares planificadas.", type: "NORMAL" },
-  { id: "E-12.3", name: "Se permite el uso de la fuerza, hasta el nivel letal de armas convencionales y otras capacidades de nivel estratégico, contra objetivos militares; para su captura, conquista, destrucción, degradación, neutralización o control; durante el desarrollo de operaciones militares planificadas.", type: "NORMAL" },
-  { id: "E-13.1", name: "Empleo de la fuerza no letal (menos letal) en forma arbitraria; en toda circunstancia y lugar.", type: "PROHIBITED" },
-  { id: "E-13.2", name: "Empleo de la fuerza letal, en forma arbitraria; en toda circunstancia y lugar.", type: "PROHIBITED" },
-  { id: "E-13.3", name: "Empleo de la fuerza no letal (menos letal); en toda circunstancia y lugar; y que existe alto grado de certeza de que el daño incidental sería excesivo comparado con la ventaja militar concreta y directa prevista.", type: "PROHIBITED" },
-  { id: "E-13.4", name: "Empleo de la fuerza letal; contra grupos hostiles, en toda circunstancia y lugar; y que existe alto grado de certeza de que el daño incidental sería excesivo comparado con la ventaja militar concreta y directa prevista.", type: "PROHIBITED" },
-  { id: "E-13.5", name: "Realizar ataques indiscriminados", type: "PROHIBITED" }
+  { id: 'E-1.1', type: ST.LIBERADA_LEY, name: 'Se permite el empleo de la fuerza, hasta el nivel letal de armas de fuego pequeñas y ligeras, en defensa propia...' },
+  { id: 'E-1.2', type: ST.LIBERADA_LEY, name: 'Se permite el empleo de la fuerza, hasta el nivel letal de armas de fuego pequeñas y ligeras, en defensa de la Unidad...' },
+  { id: 'E-2.1', type: ST.LIBERADA, name: 'Se permite el empleo de la fuerza... para la protección y defensa de terceras personas.' },
+  { id: 'E-2.2', type: ST.LIBERADA, name: 'Se permite el empleo de la fuerza, hasta el nivel letal de armas convencionales... para la protección de terceras personas.' },
+  { id: 'E-2.3', type: ST.LIBERADA, name: 'Se permite el empleo de la fuerza hasta el nivel letal de armas convencionales estratégicas...' },
+  { id: 'E-3.1', type: ST.LIBERADA, name: 'Se permite el empleo de la fuerza... para el cumplimiento de la misión.' },
+  { id: 'E-3.2', type: ST.LIBERADA, name: 'Se permite el empleo de la fuerza, hasta el nivel letal de armas pesadas... para el cumplimiento de la misión.' },
+  { id: 'E-3.3', type: ST.LIBERADA, name: 'Se permite el empleo de la fuerza hasta el nivel letal de armas convencionales estratégicas... para el cumplimiento de la misión.' },
+  { id: 'E-3.4', type: ST.LIBERADA, name: 'Se permite el empleo de la fuerza... contra objetivos fuera de combate que pongan en peligro inminente a otros.' },
+  { id: 'E-4.1', type: ST.LIBERADA, name: 'Se permite el empleo de la fuerza... contra grupos hostiles que interfieran con la libertad de movimiento.' },
+  { id: 'E-4.2', type: ST.LIBERADA, name: 'Se permite el empleo de la fuerza armas pesadas... contra grupos hostiles que interfieran con la libertad de movimiento.' },
+  { id: 'E-4.3', type: ST.LIBERADA, name: 'Se permite el empleo de la fuerza estratégica... contra miembros de grupos hostiles que interfieran con la libertad de movimiento.' },
+  { id: 'E-5.1', type: ST.LIBERADA, name: 'Se permite el empleo de la fuerza letal... durante operaciones de intervención si ponen en peligro a otros.' },
+  { id: 'E-5.2', type: ST.LIBERADA, name: 'Se permite el empleo de la fuerza letal... durante su búsqueda e intervención si no se han rendido.' },
+  { id: 'E-5.3', type: ST.LIBERADA, name: 'Se permite el empleo de la fuerza letal... para evitar su escape.' },
+  { id: 'E-5.4', type: ST.LIBERADA, name: 'Se permite el empleo de armas pesadas... durante su búsqueda e intervención.' },
+  { id: 'E-5.5', type: ST.LIBERADA, name: 'Se permite el empleo de armas estratégicas... durante su búsqueda e intervención.' },
+  { id: 'E-6.1', type: ST.LIBERADA, name: 'Se permite el empleo de la fuerza... para liberar personas retenidas o rehenes.' },
+  { id: 'E-6.2', type: ST.LIBERADA, name: 'Se permite el empleo de armas convencionales... para liberar personas retenidas o rehenes.' },
+  { id: 'E-6.3', type: ST.LIBERADA, name: 'Se permite el empleo de armas estratégicas... para liberar personas retenidas o rehenes.' },
+  { id: 'E-6.4', type: ST.LIBERADA, name: 'Se permite el empleo de la fuerza letal... para liberar rehenes si existe peligro inminente de muerte.' },
+  { id: 'E-7.1', type: ST.LIBERADA, name: 'Se permite el empleo de la fuerza... para proteger instalaciones de uso militar y activos críticos.' },
+  { id: 'E-7.2', type: ST.LIBERADA, name: 'Se permite el empleo de armas pesadas... para proteger instalaciones militares y activos críticos.' },
+  { id: 'E-7.3', type: ST.LIBERADA, name: 'Se permite el empleo de armas estratégicas... para proteger instalaciones militares y activos críticos.' },
+  { id: 'E-7.4', type: ST.LIBERADA, name: 'Se permite el empleo de la fuerza... para liberar, recuperar o controlar instalaciones y vehículos.' },
+  { id: 'E-7.5', type: ST.LIBERADA, name: 'Se permite el empleo de armas pesadas... para liberar, recuperar o controlar instalaciones y vehículos.' },
+  { id: 'E-7.6', type: ST.LIBERADA, name: 'Se permite el empleo de armas estratégicas... para liberar, recuperar o controlar instalaciones y vehículos.' },
+  { id: 'E-8.1', type: ST.LIBERADA, name: 'Se permite el empleo de la fuerza... durante la configuración y ejecución de maniobras tácticas.' },
+  { id: 'E-8.2', type: ST.LIBERADA, name: 'Se permite el empleo de armas pesadas... durante maniobras tácticas y operacionales.' },
+  { id: 'E-8.3', type: ST.LIBERADA, name: 'Se permite el empleo de armas estratégicas... durante maniobras tácticas y operacionales.' },
+  { id: 'E-9.1', type: ST.LIBERADA, name: 'Se permite el empleo de iluminación... durante acciones de seguimiento en espacios acuáticos.' },
+  { id: 'E-9.2', type: ST.LIBERADA, name: 'Se permite el empleo de la fuerza... durante acciones de seguimiento en espacios acuáticos.' },
+  { id: 'E-9.3', type: ST.LIBERADA, name: 'Se permite el empleo de armas pesadas... durante acciones de seguimiento en espacios acuáticos.' },
+  { id: 'E-9.4', type: ST.LIBERADA, name: 'Se permite el empleo de fuego incapacitante... durante seguimiento en espacios acuáticos.' },
+  { id: 'E-9.5', type: ST.LIBERADA, name: 'Se permite el empleo de armas estratégicas... durante seguimiento en espacios acuáticos.' },
+  { id: 'E-10.1', type: ST.LIBERADA, name: 'Se permite el empleo de iluminación... durante interdicción en espacios acuáticos.' },
+  { id: 'E-10.2', type: ST.LIBERADA, name: 'Se permite el empleo de la fuerza... durante interdicción en espacios acuáticos.' },
+  { id: 'E-10.3', type: ST.LIBERADA, name: 'Se permite el empleo de armas pesadas... durante interdicción en espacios acuáticos.' },
+  { id: 'E-10.4', type: ST.LIBERADA, name: 'Se permite el empleo de fuego incapacitante... durante interdicción en espacios acuáticos.' },
+  { id: 'E-10.5', type: ST.LIBERADA, name: 'Se permite el empleo de armas estratégicas... durante interdicción en espacios acuáticos.' },
+  { id: 'E-10.6', type: ST.LIBERADA, name: 'Se permite el empleo de la fuerza letal... durante interdicción si existe peligro inminente de muerte.' },
+  { id: 'E-11.1', type: ST.LIBERADA, name: 'Se permite el empleo de disparos de advertencia en el espacio aéreo nacional.' },
+  { id: 'E-11.2', type: ST.LIBERADA, name: 'Se permite el empleo de fuerza letal en el espacio aéreo... para neutralizar si la persuasión falla.' },
+  { id: 'E-11.3', type: ST.LIBERADA, name: 'Se permite el empleo de fuerza letal en el espacio aéreo... si existe peligro inminente de muerte.' },
+  { id: 'E-12.1', type: ST.LIBERADA, name: 'Se permite el uso de la fuerza... para captura y destrucción durante operaciones planificadas.' },
+  { id: 'E-12.2', type: ST.LIBERADA, name: 'Se permite el uso de armas pesadas... para captura y destrucción durante operaciones planificadas.' },
+  { id: 'E-12.3', type: ST.LIBERADA, name: 'Se permite el uso de armas estratégicas... para captura y destrucción durante operaciones planificadas.' },
+  { id: 'E-13.1', type: ST.PROHIBIDA_LEY, name: 'Empleo de la fuerza no letal en forma arbitraria; en toda circunstancia y lugar.' },
+  { id: 'E-13.2', type: ST.PROHIBIDA_LEY, name: 'Empleo de la fuerza letal, en forma arbitraria; en toda circunstancia y lugar.' },
+  { id: 'E-13.3', type: ST.PROHIBIDA_LEY, name: 'Empleo de la fuerza con daño incidental excesivo comparado con la ventaja militar.' },
+  { id: 'E-13.4', type: ST.PROHIBIDA_LEY, name: 'Empleo de fuerza letal contra grupos con daño incidental excesivo.' },
+  { id: 'E-13.5', type: ST.PROHIBIDA_LEY, name: 'Realizar ataques indiscriminados.' }
 ];
 
-// ELIMINAMOS PUNTOS Y ESPACIOS PARA QUE FIREBASE NO TIRE PANTALLA BLANCA NUNCA
+// REPARACIÓN DEL BUG DE PANTALLA BLANCA: Reemplazamos todos los puntos y espacios posibles
 const PERMISOS_BASE = RAW_PERMISOS.map(p => ({ ...p, id_fb: p.id.replace(/\./g, '_').replace(/\s/g, ''), label: p.id }));
 
-// MATRIZ INICIAL EXACTA SACADA DEL EXCEL
+// MATRIZ ACTUALIZADA SEGÚN EXCEL Y LIMITADA A 3 COLORES EN LA BD
 const initPermisos = () => {
-  return {
-    "JEFE DEL CCFFAA": {
-      "E-1_1": "YELLOW", "E-1_2": "YELLOW", "E-2_1": "YELLOW", "E-2_2": "GREEN", "E-2_2_1": "RED", "E-2_2_2": "RED", "E-2_3": "YELLOW", "E-3_1": "YELLOW", "E-3_2": "GREEN", "E-3_2_1": "RED", "E-3_2_2": "RED", "E-3_3": "YELLOW", "E-3_4": "YELLOW", "E-4_1": "YELLOW", "E-4_2": "GREEN", "E-4_2_1": "RED", "E-4_2_2": "RED", "E-4_3": "YELLOW", "E-5_1": "YELLOW", "E-5_2": "YELLOW", "E-5_3": "YELLOW", "E-5_4": "GREEN", "E-5_4_1": "RED", "E-5_4_2": "RED", "E-5_5": "YELLOW", "E-6_1": "YELLOW", "E-6_2": "YELLOW", "E-6_3": "YELLOW", "E-6_4": "YELLOW", "E-7_1": "YELLOW", "E-7_2": "GREEN", "E-7_2_1": "RED", "E-7_2_2": "RED", "E-7_3": "YELLOW", "E-7_4": "YELLOW", "E-7_5": "GREEN", "E-7_5_1": "RED", "E-7_5_2": "RED", "E-7_6": "YELLOW", "E-8_1": "YELLOW", "E-8_2": "GREEN", "E-8_2_1": "RED", "E-8_2_2": "RED", "E-8_3": "YELLOW", "E-9_1": "YELLOW", "E-9_2": "YELLOW", "E-9_3": "GREEN", "E-9_3_1": "RED", "E-9_3_2": "RED", "E-9_4": "YELLOW", "E-9_5": "YELLOW", "E-10_1": "YELLOW", "E-10_2": "YELLOW", "E-10_3": "GREEN", "E-10_3_1": "RED", "E-10_3_2": "RED", "E-10_4": "YELLOW", "E-10_5": "YELLOW", "E-10_6": "YELLOW", "E-11_1": "YELLOW", "E-11_2": "YELLOW", "E-11_3": "YELLOW", "E-12_1": "YELLOW", "E-12_2": "GREEN", "E-12_2_1": "RED", "E-12_2_2": "RED", "E-12_3": "YELLOW", "E-13_1": "RED", "E-13_2": "RED", "E-13_3": "RED", "E-13_4": "RED", "E-13_5": "RED"
-    },
-    "CG - CEVRAEM": {
-      "E-1_1": "YELLOW", "E-1_2": "YELLOW", "E-2_1": "YELLOW", "E-2_2": "RED", "E-2_2_1": "YELLOW", "E-2_2_2": "YELLOW", "E-2_3": "YELLOW", "E-3_1": "YELLOW", "E-3_2": "RED", "E-3_2_1": "YELLOW", "E-3_2_2": "YELLOW", "E-3_3": "YELLOW", "E-3_4": "YELLOW", "E-4_1": "YELLOW", "E-4_2": "RED", "E-4_2_1": "YELLOW", "E-4_2_2": "YELLOW", "E-4_3": "YELLOW", "E-5_1": "YELLOW", "E-5_2": "YELLOW", "E-5_3": "YELLOW", "E-5_4": "RED", "E-5_4_1": "YELLOW", "E-5_4_2": "YELLOW", "E-5_5": "YELLOW", "E-6_1": "YELLOW", "E-6_2": "YELLOW", "E-6_3": "YELLOW", "E-6_4": "YELLOW", "E-7_1": "YELLOW", "E-7_2": "RED", "E-7_2_1": "YELLOW", "E-7_2_2": "YELLOW", "E-7_3": "YELLOW", "E-7_4": "YELLOW", "E-7_5": "RED", "E-7_5_1": "YELLOW", "E-7_5_2": "YELLOW", "E-7_6": "YELLOW", "E-8_1": "YELLOW", "E-8_2": "RED", "E-8_2_1": "YELLOW", "E-8_2_2": "YELLOW", "E-8_3": "YELLOW", "E-9_1": "YELLOW", "E-9_2": "YELLOW", "E-9_3": "RED", "E-9_3_1": "YELLOW", "E-9_3_2": "YELLOW", "E-9_4": "YELLOW", "E-9_5": "YELLOW", "E-10_1": "YELLOW", "E-10_2": "YELLOW", "E-10_3": "RED", "E-10_3_1": "YELLOW", "E-10_3_2": "YELLOW", "E-10_4": "YELLOW", "E-10_5": "YELLOW", "E-10_6": "YELLOW", "E-11_1": "YELLOW", "E-11_2": "YELLOW", "E-11_3": "YELLOW", "E-12_1": "YELLOW", "E-12_2": "RED", "E-12_2_1": "YELLOW", "E-12_2_2": "YELLOW", "E-12_3": "YELLOW", "E-13_1": "RED", "E-13_2": "RED", "E-13_3": "RED", "E-13_4": "RED", "E-13_5": "RED"
-    },
-    "CG - 31 BRIG INF": {
-      "E-1_1": "GREEN", "E-1_2": "GREEN", "E-2_1": "GREEN", "E-2_2": "RED", "E-2_2_1": "GREEN", "E-2_2_2": "GREEN", "E-2_3": "GREEN", "E-3_1": "GREEN", "E-3_2": "RED", "E-3_2_1": "GREEN", "E-3_2_2": "GREEN", "E-3_3": "GREEN", "E-3_4": "GREEN", "E-4_1": "GREEN", "E-4_2": "RED", "E-4_2_1": "GREEN", "E-4_2_2": "GREEN", "E-4_3": "GREEN", "E-5_1": "GREEN", "E-5_2": "GREEN", "E-5_3": "GREEN", "E-5_4": "RED", "E-5_4_1": "GREEN", "E-5_4_2": "GREEN", "E-5_5": "GREEN", "E-6_1": "GREEN", "E-6_2": "GREEN", "E-6_3": "GREEN", "E-6_4": "GREEN", "E-7_1": "GREEN", "E-7_2": "RED", "E-7_2_1": "GREEN", "E-7_2_2": "GREEN", "E-7_3": "GREEN", "E-7_4": "GREEN", "E-7_5": "RED", "E-7_5_1": "GREEN", "E-7_5_2": "GREEN", "E-7_6": "GREEN", "E-8_1": "GREEN", "E-8_2": "RED", "E-8_2_1": "GREEN", "E-8_2_2": "GREEN", "E-8_3": "GREEN", "E-9_1": "GREEN", "E-9_2": "GREEN", "E-9_3": "RED", "E-9_3_1": "GREEN", "E-9_3_2": "GREEN", "E-9_4": "GREEN", "E-9_5": "GREEN", "E-10_1": "GREEN", "E-10_2": "GREEN", "E-10_3": "RED", "E-10_3_1": "GREEN", "E-10_3_2": "GREEN", "E-10_4": "GREEN", "E-10_5": "GREEN", "E-10_6": "GREEN", "E-11_1": "GREEN", "E-11_2": "GREEN", "E-11_3": "GREEN", "E-12_1": "GREEN", "E-12_2": "RED", "E-12_2_1": "GREEN", "E-12_2_2": "GREEN", "E-12_3": "GREEN", "E-13_1": "RED", "E-13_2": "RED", "E-13_3": "RED", "E-13_4": "RED", "E-13_5": "RED"
+  const matriz = { [ROLES.M3]: {}, [ROLES.M2]: {}, [ROLES.M1]: {} };
+  
+  // Reglas de nivel operacional que el CCFFAA retiene
+  const greenM3 = ["E-2_2", "E-3_2", "E-4_2", "E-5_4", "E-7_2", "E-7_5", "E-8_2", "E-9_3", "E-10_3", "E-12_2"];
+  
+  PERMISOS_BASE.forEach(p => {
+    const code = p.id_fb;
+    
+    if (p.type === ST.PROHIBIDA_LEY) {
+      matriz[ROLES.M3][code] = ST.RETENIDA;
+      matriz[ROLES.M2][code] = ST.RETENIDA;
+      matriz[ROLES.M1][code] = ST.RETENIDA;
+    } else if (p.type === ST.LIBERADA_LEY) {
+      matriz[ROLES.M3][code] = ST.LIBERADA;
+      matriz[ROLES.M2][code] = ST.LIBERADA;
+      matriz[ROLES.M1][code] = ST.LIBERADA;
+    } else {
+      if (greenM3.includes(code)) {
+        // CCFFAA las tiene, subordinados no
+        matriz[ROLES.M3][code] = ST.LIBERADA;
+        matriz[ROLES.M2][code] = ST.RETENIDA;
+        matriz[ROLES.M1][code] = ST.RETENIDA;
+      } else {
+        // Están delegadas hasta la brigada
+        matriz[ROLES.M3][code] = ST.DELEGADA;
+        matriz[ROLES.M2][code] = ST.DELEGADA;
+        matriz[ROLES.M1][code] = ST.LIBERADA;
+      }
     }
-  };
+  });
+  return matriz;
 };
 
 const initialConfigPerRole = PERMISOS_BASE.reduce((acc, p) => { acc[p.id_fb] = { aprobar: [], rechazar: [] }; return acc; }, {});
@@ -171,6 +174,7 @@ const GlobalStyles = () => (
     .permiso-text { flex: 1; padding-right: 20px; }
     .box-container { display: flex; flex-direction: column; align-items: center; min-width: 120px; justify-content: center; }
     
+    /* SOLO 3 COLORES EN CSS */
     .box-status { width: 100%; max-width: 110px; height: 38px; border-radius: 6px; border: 2px solid rgba(0,0,0,0.1); transition: all 0.3s; cursor: pointer; margin-bottom: 5px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); display: block; margin-left: auto; margin-right: auto; }
     .box-green { background: #22c55e; }
     .box-yellow { background: #eab308; }
@@ -212,10 +216,10 @@ export default function App() {
   const [currentUser, setCurrentUser] = useState(null);
   const [isDownloading, setIsDownloading] = useState(false);
   
-  const [permisos, setPermisos, load1] = useFirebaseState('vraem_permisos_vfinal', initPermisos());
-  const [requests, setRequests, load2] = useFirebaseState('vraem_requests_vfinal', []);
-  const [autoModeActive, setAutoModeActive, load3] = useFirebaseState('vraem_autoModeActive_vfinal', { [ROLES.M3]: false, [ROLES.M2]: false });
-  const [autoConfig, setAutoConfig, load4] = useFirebaseState('vraem_autoConfig_vfinal', { [ROLES.M3]: initialConfigPerRole, [ROLES.M2]: initialConfigPerRole });
+  const [permisos, setPermisos, load1] = useFirebaseState('vraem_permisos_v3', initPermisos());
+  const [requests, setRequests, load2] = useFirebaseState('vraem_requests_v3', []);
+  const [autoModeActive, setAutoModeActive, load3] = useFirebaseState('vraem_autoModeActive_v3', { [ROLES.M3]: false, [ROLES.M2]: false });
+  const [autoConfig, setAutoConfig, load4] = useFirebaseState('vraem_autoConfig_v3', { [ROLES.M3]: initialConfigPerRole, [ROLES.M2]: initialConfigPerRole });
 
   const [solicitarModal, setSolicitarModal] = useState({ open: false, permissionId: null, label: '', reason: RAZONES[0] });
   const [showConfig, setShowConfig] = useState(false);
@@ -259,7 +263,7 @@ export default function App() {
     if (autoModeActive[superior]) {
       const cSuperior = autoConfig[superior][permissionId];
       if (cSuperior.aprobar.includes(reason)) {
-        if (superior !== ROLES.M3 && permisos[superior][permissionId] === ST.RETENIDA) {
+        if (superior !== ROLES.M3 && permisos[superior][permissionId] !== ST.LIBERADA && permisos[superior][permissionId] !== ST.DELEGADA) {
           alert(`El ${superior} configuró auto-aprobación, pero él no posee la regla ${label}. Pasa a revisión manual.`);
         } else {
           setPermisos(prev => {
@@ -287,8 +291,8 @@ export default function App() {
   const resolverSolicitud = (reqId, aprobar) => {
     const req = requests.find(r => r.id === reqId);
     if (aprobar) {
-      if (currentUser !== ROLES.M3 && permisos[currentUser][req.permissionId] === ST.RETENIDA) {
-        alert(`❌ ERROR: No tienes la regla ${req.label} en Verde o Amarillo. No puedes delegarla.`);
+      if (currentUser !== ROLES.M3 && permisos[currentUser][req.permissionId] !== ST.LIBERADA && permisos[currentUser][req.permissionId] !== ST.DELEGADA) {
+        alert(`❌ ERROR: No tienes la regla ${req.label} en Verde. No puedes delegarla.`);
         return;
       }
       setPermisos(prev => {
@@ -320,6 +324,7 @@ export default function App() {
     setIsDownloading(true);
     const estadoActual = permisos[currentUser];
     
+    // Al generar el PDF, las PROHIBIDAS POR LEY ya no se mezclan con las retenidas comunes
     const liberadas = PERMISOS_BASE.filter(p => estadoActual[p.id_fb] === ST.LIBERADA);
     const delegadas = PERMISOS_BASE.filter(p => estadoActual[p.id_fb] === ST.DELEGADA);
     
@@ -327,7 +332,7 @@ export default function App() {
     const retenidas2doEscalon = [];
     
     PERMISOS_BASE.forEach(p => {
-      if (estadoActual[p.id_fb] === ST.RETENIDA) {
+      if (estadoActual[p.id_fb] === ST.RETENIDA && p.type !== ST.PROHIBIDA_LEY) {
         if (currentUser === ROLES.M1 && permisos[ROLES.M2][p.id_fb] === ST.RETENIDA && permisos[ROLES.M3][p.id_fb] === ST.RETENIDA) {
           retenidas2doEscalon.push(p);
         } else {
@@ -335,6 +340,8 @@ export default function App() {
         }
       }
     });
+
+    const prohibidas = PERMISOS_BASE.filter(p => p.type === ST.PROHIBIDA_LEY);
 
     let cargoFirma = '';
     let nombreFirmaImg = '';
@@ -388,6 +395,14 @@ export default function App() {
           </table>
         ` : ''}
 
+        ${prohibidas.length > 0 ? `
+          <h2 style="font-size: 12px; background: #e2e8f0; padding: 4px; margin-top: 15px;">5. REGLAS PROHIBIDAS POR LEY (NO AUTORIZADAS)</h2>
+          <table style="width: 100%; border-collapse: collapse; font-size: 10px; margin-bottom: 10px;">
+            <tr><th style="border: 1px solid #000; padding: 4px; background: #f8fafc; width: 15%;">CÓDIGO</th><th style="border: 1px solid #000; padding: 4px; background: #f8fafc;">DESCRIPCIÓN</th></tr>
+            ${prohibidas.map(p => `<tr><td style="border: 1px solid #000; padding: 4px;"><strong>${p.label}</strong></td><td style="border: 1px solid #000; padding: 4px;">${p.name}</td></tr>`).join('')}
+          </table>
+        ` : ''}
+
         <div style="margin-top: 50px; text-align: center;">
           <img src="${window.location.origin}/${nombreFirmaImg}" style="max-width: 150px; max-height: 80px; display: block; margin: 0 auto 5px auto;" onerror="this.style.display='none'" />
           <p style="margin: 0; font-weight: bold; font-size: 11px; border-top: 1px solid #000; display: inline-block; padding-top: 5px;">${cargoFirma}</p>
@@ -412,11 +427,11 @@ export default function App() {
   };
 
   const resetFirebaseDB = () => {
-    if(window.confirm("¿Limpiar base de datos completa y reiniciar sistema con la matriz original?")) {
-      set(ref(db, 'vraem_permisos_vfinal'), initPermisos());
-      set(ref(db, 'vraem_requests_vfinal'), []);
-      set(ref(db, 'vraem_autoModeActive_vfinal'), { [ROLES.M3]: false, [ROLES.M2]: false });
-      set(ref(db, 'vraem_autoConfig_vfinal'), { [ROLES.M3]: initialConfigPerRole, [ROLES.M2]: initialConfigPerRole });
+    if(window.confirm("¿Limpiar base de datos completa y reiniciar sistema con la matriz por defecto?")) {
+      set(ref(db, 'vraem_permisos_v3'), initPermisos());
+      set(ref(db, 'vraem_requests_v3'), []);
+      set(ref(db, 'vraem_autoModeActive_v3'), { [ROLES.M3]: false, [ROLES.M2]: false });
+      set(ref(db, 'vraem_autoConfig_v3'), { [ROLES.M3]: initialConfigPerRole, [ROLES.M2]: initialConfigPerRole });
     }
   };
 
@@ -543,14 +558,21 @@ export default function App() {
                 let boxClass = 'box-red';
                 let textStatus = 'SOLICITAR';
                 
-                if (estado === ST.LIBERADA) { boxClass = 'box-green'; textStatus = 'DELEGAR (ACTIVO)'; }
-                else if (estado === ST.DELEGADA) { boxClass = 'box-yellow'; textStatus = 'REVOCAR'; }
+                if (estado === ST.LIBERADA) { 
+                  boxClass = 'box-green'; 
+                  textStatus = p.type === ST.LIBERADA_LEY ? 'LIBRE POR LEY' : 'DELEGAR (ACTIVO)'; 
+                } else if (estado === ST.DELEGADA) { 
+                  boxClass = 'box-yellow'; 
+                  textStatus = 'REVOCAR'; 
+                } else if (estado === ST.RETENIDA) {
+                  boxClass = 'box-red';
+                  textStatus = p.type === ST.PROHIBIDA_LEY ? 'PROHIBIDO (LEY)' : 'SOLICITAR';
+                }
 
                 const handleBoxClick = () => {
-                  if (p.type === 'PROHIBITED') {
-                    alert("Esta regla es una prohibición estipulada por ley y no puede ser solicitada, delegada ni liberada.");
-                    return;
-                  }
+                  if (p.type === ST.LIBERADA_LEY) return alert("Esta regla es Libre por Ley y está autorizada para todos los niveles.");
+                  if (p.type === ST.PROHIBIDA_LEY) return alert("Esta regla es una prohibición por Ley. No puede ser solicitada, delegada ni liberada por nadie.");
+                  
                   if (estado === ST.RETENIDA && currentUser !== ROLES.M3) {
                     setSolicitarModal({ open: true, permissionId: p.id_fb, label: p.label, reason: RAZONES[0] });
                   } else if (estado === ST.DELEGADA) {
@@ -568,9 +590,9 @@ export default function App() {
                       <div 
                         onClick={handleBoxClick}
                         className={`box-status ${boxClass} ${isPending ? 'flash-active' : ''}`}
-                        title={p.type === 'PROHIBITED' ? 'Prohibido por Ley' : (estado === ST.DELEGADA ? 'Clic para Revocar' : (estado === ST.RETENIDA ? 'Clic para Solicitar' : ''))}
+                        title={estado === ST.DELEGADA ? 'Clic para Revocar' : (estado === ST.RETENIDA ? 'Clic para Solicitar' : '')}
                       ></div>
-                      <span className="txt-status">{p.type === 'PROHIBITED' ? 'RETENIDA' : textStatus}</span>
+                      <span className="txt-status">{textStatus}</span>
                     </div>
                   </div>
                 );
@@ -606,7 +628,7 @@ export default function App() {
               </div>
               
               <div style={{padding: '25px', overflowY: 'auto', flex: 1, background: '#f1f5f9'}}>
-                {PERMISOS_BASE.filter(p => p.type !== 'PROHIBITED').map(p => (
+                {PERMISOS_BASE.filter(p => p.type !== ST.LIBERADA_LEY && p.type !== ST.PROHIBIDA_LEY).map(p => (
                   <div key={p.id_fb} style={{background: '#fff', padding: '20px', border: '1px solid #e2e8f0', marginBottom: '15px', borderRadius: '8px', boxShadow: '0 1px 2px rgba(0,0,0,0.05)'}}>
                     <h4 style={{margin: '0 0 15px 0', fontSize: '15px', color: '#0f172a', borderBottom: '1px solid #f1f5f9', paddingBottom: '10px'}}>{p.label} - {p.name.substring(0, 50)}...</h4>
                     <div className="grid-config">
