@@ -58,8 +58,8 @@ const ST = {
 };
 
 const RAW_PERMISOS = [
-  { id: 'E-1.1', type: ST.LIBERADA_LEY, name: 'Se permite el empleo de la fuerza, hasta el nivel letal de armas de fuego pequeñas y ligeras, en defensa propia...' },
-  { id: 'E-1.2', type: ST.LIBERADA_LEY, name: 'Se permite el empleo de la fuerza, hasta el nivel letal de armas de fuego pequeñas y ligeras, en defensa de la Unidad...' },
+{ id: 'E-1.1', type: ST.LIBERADA, name: 'Se permite el empleo de la fuerza, hasta el nivel letal de armas de fuego pequeñas y ligeras, en defensa propia...' },
+  { id: 'E-1.2', type: ST.LIBERADA, name: 'Se permite el empleo de la fuerza, hasta el nivel letal de armas de fuego pequeñas y ligeras, en defensa de la Unidad...' },
   { id: 'E-2.1', type: ST.LIBERADA, name: 'Se permite el empleo de la fuerza... para la protección y defensa de terceras personas.' },
   { id: 'E-2.2', type: ST.LIBERADA, name: 'Se permite el empleo de la fuerza, hasta el nivel letal de armas convencionales... para la protección de terceras personas.' },
   { id: 'E-2.3', type: ST.LIBERADA, name: 'Se permite el empleo de la fuerza hasta el nivel letal de armas convencionales estratégicas...' },
