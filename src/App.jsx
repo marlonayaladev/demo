@@ -125,6 +125,66 @@ const initPermisos = () => {
 
 const initialConfigPerRole = PERMISOS_BASE.reduce((acc, p) => { acc[p.id_fb] = { aprobar: [], rechazar: [] }; return acc; }, {});
 
+// --- BLOQUE MAESTRO DE ESTILOS RESPONSIVE ---
+const GlobalStyles = () => (
+  <style dangerouslySetInnerHTML={{__html: `
+    * { box-sizing: border-box; }
+    body { margin: 0; padding: 0; font-family: system-ui, -apple-system, sans-serif; background: #0f172a; }
+    
+    /* LOGIN SCREEN */
+    .login-wrapper { min-height: 100vh; display: flex; justify-content: center; align-items: center; background: linear-gradient(135deg, #0f172a 0%, #020617 100%); }
+    .login-box { background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(10px); padding: 40px 50px; border-radius: 16px; border: 1px solid rgba(255,255,255,0.1); box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5); text-align: center; width: 90%; max-width: 450px; }
+    
+    /* APP LAYOUT */
+    .app-layout { display: flex; height: 100vh; overflow: hidden; background: #f1f5f9; color: #0f172a; }
+    .sidebar { width: 300px; background: white; padding: 20px; border-right: 1px solid #e2e8f0; display: flex; flex-direction: column; overflow-y: auto; z-index: 10; box-shadow: 2px 0 5px rgba(0,0,0,0.05); }
+    .main-content { flex: 1; padding: 25px; overflow-y: auto; }
+    
+    /* COMPONENTES INTERNOS */
+    .permiso-row { background: #ffffff; padding: 18px; border-radius: 10px; border: 1px solid #e2e8f0; display: flex; align-items: center; margin-bottom: 12px; transition: all 0.2s; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+    .permiso-row:hover { border-color: #cbd5e1; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); }
+    .permiso-text { flex: 1; padding-right: 20px; }
+    .box-container { display: flex; flex-direction: column; align-items: center; min-width: 120px; justify-content: center; }
+    
+    .box-status { width: 100%; max-width: 110px; height: 38px; border-radius: 6px; border: 2px solid rgba(0,0,0,0.1); transition: all 0.3s; cursor: pointer; margin-bottom: 5px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); display: block; margin-left: auto; margin-right: auto; }
+    .box-green { background: #22c55e; }
+    .box-yellow { background: #eab308; }
+    .box-red { background: #ef4444; }
+    .box-dark-green { background: #166534; cursor: not-allowed; }
+    .box-dark-red { background: #7f1d1d; cursor: not-allowed; }
+    .txt-status { font-size: 11px; font-weight: bold; width: 100%; text-align: center; color: #475569; display: block; margin-top: 4px; text-transform: uppercase; }
+    
+    .noti-container { display: flex; gap: 15px; overflow-x: auto; padding-bottom: 10px; }
+    .noti-item { min-width: 280px; background: #f8fafc; border: 1px solid #cbd5e1; padding: 15px; border-radius: 8px; box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
+    
+    /* MODALES */
+    .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(15, 23, 42, 0.8); backdrop-filter: blur(4px); display: flex; justify-content: center; align-items: center; z-index: 1000; padding: 15px; }
+    .modal-content-sm { background: white; padding: 25px; border-radius: 12px; width: 100%; max-width: 400px; max-height: 90vh; overflow-y: auto; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.3); }
+    .modal-content-lg { background: white; border-radius: 12px; width: 100%; max-width: 800px; max-height: 90vh; display: flex; flex-direction: column; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.3); overflow: hidden; }
+    .grid-config { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+    
+    @keyframes blink-border { 0% { border-color: #3b82f6; box-shadow: 0 0 12px #3b82f6; } 50% { border-color: transparent; box-shadow: none; } 100% { border-color: #3b82f6; box-shadow: 0 0 12px #3b82f6; } }
+    .flash-active { animation: blink-border 1.5s infinite; border: 2px solid #3b82f6; }
+    
+    /* RESPONSIVE CELULAR MAGIA */
+    @media (max-width: 768px) {
+      .login-box { padding: 30px 20px; }
+      .app-layout { flex-direction: column; overflow-y: auto; height: auto; min-height: 100vh; }
+      .sidebar { width: 100%; height: auto; border-right: none; border-bottom: 2px solid #e2e8f0; padding: 15px; box-shadow: none; }
+      .sidebar img { width: 100px !important; }
+      .main-content { padding: 15px; overflow-y: visible; }
+      
+      .permiso-row { flex-direction: column; text-align: center; gap: 15px; padding: 20px 15px; }
+      .permiso-text { padding-right: 0; }
+      .box-container { width: 100%; border-top: 1px solid #f1f5f9; padding-top: 15px; }
+      
+      .grid-config { grid-template-columns: 1fr; gap: 15px; }
+      .noti-item { min-width: 100%; margin-bottom: 10px; }
+      .noti-container { flex-direction: column; }
+    }
+  `}} />
+);
+
 export default function App() {
   const [currentUser, setCurrentUser] = useState(null);
   const [isDownloading, setIsDownloading] = useState(false);
@@ -347,285 +407,224 @@ export default function App() {
     }
   };
 
-  // --- PANTALLA DE CARGA ---
   if (!isReady) {
     return (
-      <div style={{ minHeight: '100vh', display: 'flex', justifyContent: 'center', alignItems: 'center', background: '#020617', color: '#38bdf8', fontFamily: 'system-ui' }}>
-        <h2>Estableciendo conexión segura... 📡</h2>
-      </div>
+      <>
+        <GlobalStyles />
+        <div className="login-wrapper" style={{color: '#38bdf8'}}>
+          <h2>Estableciendo conexión segura... 📡</h2>
+        </div>
+      </>
     );
   }
 
   const misNotificaciones = requests.filter(r => r.to === currentUser);
 
-  // --- NUEVA PANTALLA DE INICIO (ESTILO DASHBOARD MILITAR) ---
   if (!currentUser) {
     return (
-      <div style={{
-        minHeight: '100vh',
-        display: 'flex',
-        justifyContent: 'center',
-        alignItems: 'center',
-        background: 'linear-gradient(135deg, #0f172a 0%, #020617 100%)',
-        fontFamily: 'system-ui, -apple-system, sans-serif'
-      }}>
-        <div style={{
-          background: 'rgba(30, 41, 59, 0.7)',
-          backdropFilter: 'blur(10px)',
-          padding: '40px 50px',
-          borderRadius: '16px',
-          border: '1px solid rgba(255,255,255,0.1)',
-          boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)',
-          textAlign: 'center',
-          maxWidth: '450px',
-          width: '90%'
-        }}>
-          <img src="logo.png" alt="Escudo Militar" style={{ width: '120px', marginBottom: '20px', filter: 'drop-shadow(0 0 10px rgba(255,255,255,0.2))' }} />
-          
-          <h1 style={{ color: '#f8fafc', fontSize: '22px', margin: '0 0 10px 0', letterSpacing: '1px' }}>
-            SISTEMA AUTOMATIZADO
-          </h1>
-          <h2 style={{ color: '#38bdf8', fontSize: '14px', margin: '0 0 35px 0', fontWeight: '500', letterSpacing: '2px' }}>
-            REGLAS DE ENFRENTAMIENTO (ROE)
-          </h2>
-          
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
-            {Object.values(ROLES).map(rol => (
-              <button 
-                key={rol} 
-                onClick={() => setCurrentUser(rol)} 
-                style={{
-                  background: 'linear-gradient(to right, #1e293b, #334155)',
-                  color: '#f8fafc',
-                  border: '1px solid #475569',
-                  padding: '16px 20px',
-                  borderRadius: '8px',
-                  fontSize: '14px',
-                  fontWeight: 'bold',
-                  cursor: 'pointer',
-                  transition: 'all 0.3s ease',
-                  textTransform: 'uppercase',
-                  letterSpacing: '1px',
-                  boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center'
-                }}
-                onMouseOver={(e) => { e.currentTarget.style.borderColor = '#38bdf8'; e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 10px 15px -3px rgba(0, 0, 0, 0.2)'; }}
-                onMouseOut={(e) => { e.currentTarget.style.borderColor = '#475569'; e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 4px 6px -1px rgba(0, 0, 0, 0.1)'; }}
-              >
-                <span style={{color: '#38bdf8', marginRight: '10px'}}>►</span> Ingresar como {rol}
-              </button>
-            ))}
-          </div>
+      <>
+        <GlobalStyles />
+        <div className="login-wrapper">
+          <div className="login-box">
+            <img src="logo.png" alt="Escudo Militar" style={{ width: '120px', marginBottom: '20px', filter: 'drop-shadow(0 0 10px rgba(255,255,255,0.2))' }} />
+            <h1 style={{ color: '#f8fafc', fontSize: '20px', margin: '0 0 8px 0', letterSpacing: '1px' }}>SISTEMA AUTOMATIZADO</h1>
+            <h2 style={{ color: '#38bdf8', fontSize: '13px', margin: '0 0 35px 0', fontWeight: '500', letterSpacing: '2px' }}>REGLAS DE ENFRENTAMIENTO (ROE)</h2>
+            
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+              {Object.values(ROLES).map(rol => (
+                <button 
+                  key={rol} 
+                  onClick={() => setCurrentUser(rol)} 
+                  style={{ background: 'linear-gradient(to right, #1e293b, #334155)', color: '#f8fafc', border: '1px solid #475569', padding: '16px', borderRadius: '8px', fontSize: '13px', fontWeight: 'bold', cursor: 'pointer', transition: 'all 0.3s ease', textTransform: 'uppercase', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                >
+                  <span style={{color: '#38bdf8', marginRight: '10px'}}>►</span> Ingresar como {rol}
+                </button>
+              ))}
+            </div>
 
-          <div style={{ marginTop: '40px', borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '20px' }}>
-            <button 
-              onClick={resetFirebaseDB} 
-              style={{
-                background: 'transparent', 
-                color: '#64748b', 
-                border: '1px solid #334155', 
-                padding: '8px 15px', 
-                borderRadius: '4px',
-                fontSize: '11px',
-                cursor: 'pointer',
-                transition: 'all 0.2s ease',
-                textTransform: 'uppercase',
-                letterSpacing: '0.5px'
-              }}
-              onMouseOver={(e) => { e.currentTarget.style.color = '#ef4444'; e.currentTarget.style.borderColor = '#ef4444'; }}
-              onMouseOut={(e) => { e.currentTarget.style.color = '#64748b'; e.currentTarget.style.borderColor = '#334155'; }}
-            >
-              ⚠ Limpiar Base de Datos
-            </button>
-            <p style={{ color: '#475569', fontSize: '10px', marginTop: '15px', letterSpacing: '1px' }}>
-              MÓDULO DE SEGURIDAD ESTRICTA • V2.0
-            </p>
+            <div style={{ marginTop: '40px', borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '20px' }}>
+              <button onClick={resetFirebaseDB} style={{ background: 'transparent', color: '#64748b', border: '1px solid #334155', padding: '8px 15px', borderRadius: '4px', fontSize: '11px', cursor: 'pointer', textTransform: 'uppercase' }}>
+                ⚠ Limpiar Base de Datos
+              </button>
+            </div>
           </div>
         </div>
-      </div>
+      </>
     );
   }
 
-  // --- RENDER DEL DASHBOARD PRINCIPAL ---
   return (
-    <div className="app-layout">
-      {/* INYECCIÓN DE ESTILOS CSS REQUERIDOS */}
-      <style>{`
-        .box-status { width: 90px; height: 35px; border-radius: 4px; border: 2px solid rgba(0,0,0,0.1); transition: all 0.3s; cursor: pointer; margin-bottom: 5px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-        .box-green { background: #22c55e; }
-        .box-yellow { background: #eab308; }
-        .box-red { background: #ef4444; }
-        .box-dark-green { background: #166534; cursor: not-allowed; }
-        .box-dark-red { background: #7f1d1d; cursor: not-allowed; }
+    <>
+      <GlobalStyles />
+      <div className="app-layout">
         
-        .txt-status { font-size: 11px; font-weight: bold; width: 100%; text-align: center; color: #475569; }
-        
-        @keyframes blink-border { 0% { border-color: #3b82f6; box-shadow: 0 0 10px #3b82f6; } 50% { border-color: transparent; box-shadow: none; } 100% { border-color: #3b82f6; box-shadow: 0 0 10px #3b82f6; } }
-        .flash-active { animation: blink-border 1.5s infinite; border: 2px solid #3b82f6; }
-      `}</style>
-
-      {/* SIDEBAR */}
-      <div className="sidebar" style={{width: '280px'}}>
-        <div style={{textAlign: 'center', marginBottom: '20px'}}>
-          <img src="logo.png" alt="Escudo" style={{width: '180px', margin: '0 auto'}} />
-        </div>
-        <h3 style={{fontSize: '16px', marginBottom: '20px', borderBottom: '1px solid #475569', paddingBottom: '10px'}}>{currentUser}</h3>
-        
-        {currentUser !== ROLES.M1 && (
-          <div className="panel-auto" style={{background: '#0f172a'}}>
-            <h4 style={{margin: '0 0 15px 0', color: '#94a3b8', fontSize: '12px'}}>Control de Autorización</h4>
-            <button onClick={activarAutoMode} style={{width: '100%', padding: '10px', marginBottom: '5px', background: autoModeActive[currentUser] ? '#22c55e' : '#334155', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold'}}>
-              MODO ACTIVO
-            </button>
-            <button onClick={desactivarAutoMode} style={{width: '100%', padding: '10px', background: !autoModeActive[currentUser] ? '#ef4444' : '#334155', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold'}}>
-              MODO INACTIVO
-            </button>
+        {/* SIDEBAR */}
+        <div className="sidebar">
+          <div style={{textAlign: 'center', marginBottom: '20px'}}>
+            <img src="logo.png" alt="Escudo" style={{width: '140px', margin: '0 auto'}} />
           </div>
-        )}
-
-        <button onClick={descargarDocumento} disabled={isDownloading} style={{background: isDownloading ? '#94a3b8' : '#38bdf8', color: '#0f172a', border: 'none', padding: '10px', width: '100%', borderRadius: '4px', cursor: isDownloading ? 'not-allowed' : 'pointer', fontWeight: 'bold', marginBottom: '20px'}}>
-          {isDownloading ? 'GENERANDO PDF...' : 'DESCARGAR DOCUMENTO (PDF)'}
-        </button>
-
-        {currentUser !== ROLES.M1 && (
-          <button onClick={() => setShowConfig(true)} className="btn-config" style={{background: '#475569', color:'white', border:'none', padding:'10px', width:'100%', borderRadius:'4px', marginBottom:'20px'}}>
-            ⚙️ Configurar Reglas
-          </button>
-        )}
-        
-        <button onClick={() => setCurrentUser(null)} className="btn-logout" style={{marginTop: 'auto', background: 'transparent', color: '#ef4444', border:'1px solid #ef4444', padding:'10px', width:'100%', cursor:'pointer'}}>⬅ Cerrar Sesión</button>
-      </div>
-
-      {/* MAIN CONTENT */}
-      <div className="main-content" style={{maxHeight: '100vh', overflowY: 'auto', background: '#f1f5f9', padding: '20px'}}>
-        
-        <div style={{background: 'white', padding: '15px', borderRadius: '8px', marginBottom: '20px', boxShadow: '0 2px 5px rgba(0,0,0,0.05)'}}>
-          <h3 style={{margin: '0 0 10px 0', display: 'flex', alignItems: 'center'}}>
-            🔔 Solicitudes Pendientes 
-            {misNotificaciones.length > 0 && <span style={{background: '#ef4444', color: 'white', borderRadius: '50%', padding: '2px 8px', fontSize: '12px', marginLeft: '10px', animation: 'blink-border 1s infinite'}}>{misNotificaciones.length}</span>}
-          </h3>
-          {misNotificaciones.length === 0 ? <p style={{fontSize: '13px', color: '#64748b', margin: 0}}>No hay solicitudes en cola.</p> : (
-            <div style={{display: 'flex', gap: '10px', overflowX: 'auto', paddingBottom: '10px'}}>
-              {misNotificaciones.map(req => (
-                <div key={req.id} style={{minWidth: '250px', background: '#f8fafc', border: '1px solid #cbd5e1', padding: '10px', borderRadius: '6px'}}>
-                  <p style={{margin: '0 0 5px 0', fontSize: '12px'}}><strong>{req.from}</strong> solicita:</p>
-                  <p style={{margin: '0 0 5px 0', fontSize: '14px', fontWeight: 'bold', color: '#0f172a'}}>{req.label}</p>
-                  <p style={{margin: '0 0 10px 0', fontSize: '11px', color: '#2563eb'}}>Motivo: {req.reason}</p>
-                  <div style={{display: 'flex', gap: '5px'}}>
-                    <button onClick={() => resolverSolicitud(req.id, true)} style={{flex: 1, background: '#22c55e', color: 'white', border: 'none', padding: '5px', borderRadius: '4px', cursor: 'pointer', fontSize:'12px'}}>Aprobar</button>
-                    <button onClick={() => resolverSolicitud(req.id, false)} style={{flex: 1, background: '#ef4444', color: 'white', border: 'none', padding: '5px', borderRadius: '4px', cursor: 'pointer', fontSize:'12px'}}>Denegar</button>
-                  </div>
-                </div>
-              ))}
+          <h3 style={{fontSize: '15px', marginBottom: '20px', borderBottom: '1px solid #e2e8f0', paddingBottom: '10px', color: '#0f172a', textAlign: 'center'}}>{currentUser}</h3>
+          
+          {currentUser !== ROLES.M1 && (
+            <div style={{background: '#f8fafc', padding: '15px', borderRadius: '8px', marginBottom: '20px', border: '1px solid #e2e8f0'}}>
+              <h4 style={{margin: '0 0 10px 0', color: '#475569', fontSize: '11px', textTransform: 'uppercase', textAlign: 'center'}}>Autorización Automática</h4>
+              <button onClick={activarAutoMode} style={{width: '100%', padding: '10px', marginBottom: '8px', background: autoModeActive[currentUser] ? '#22c55e' : '#e2e8f0', color: autoModeActive[currentUser] ? 'white' : '#475569', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold', fontSize: '12px'}}>
+                MODO AUTOMÁTICO
+              </button>
+              <button onClick={desactivarAutoMode} style={{width: '100%', padding: '10px', background: !autoModeActive[currentUser] ? '#ef4444' : '#e2e8f0', color: !autoModeActive[currentUser] ? 'white' : '#475569', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold', fontSize: '12px'}}>
+                MODO MANUAL
+              </button>
             </div>
           )}
-        </div>
 
-        <div className="permisos-card" style={{background: 'white', padding: '20px', borderRadius: '8px'}}>
-          <h2 style={{borderBottom: '2px solid #e2e8f0', paddingBottom: '10px', margin: '0 0 20px 0'}}>Matriz de Reglas de Enfrentamiento</h2>
+          <button onClick={descargarDocumento} disabled={isDownloading} style={{background: isDownloading ? '#94a3b8' : '#38bdf8', color: 'white', border: 'none', padding: '12px', width: '100%', borderRadius: '6px', cursor: isDownloading ? 'not-allowed' : 'pointer', fontWeight: 'bold', marginBottom: '15px', fontSize: '12px'}}>
+            {isDownloading ? 'GENERANDO PDF...' : '📄 DESCARGAR PDF'}
+          </button>
+
+          {currentUser !== ROLES.M1 && (
+            <button onClick={() => setShowConfig(true)} style={{background: '#475569', color:'white', border:'none', padding:'12px', width:'100%', borderRadius:'6px', marginBottom:'20px', cursor: 'pointer', fontWeight: 'bold', fontSize: '12px'}}>
+              ⚙️ CONFIGURAR REGLAS
+            </button>
+          )}
           
-          <div style={{display: 'grid', gridTemplateColumns: '1fr', gap: '12px'}}>
-            {PERMISOS_BASE.map(p => {
-              const estado = permisos[currentUser][p.id_fb];
-              const isPending = requests.some(r => r.to === currentUser && r.permissionId === p.id_fb);
-
-              let boxClass = 'box-red';
-              let textStatus = 'SOLICITAR';
-              
-              if (estado === ST.LIBERADA) { boxClass = 'box-green'; textStatus = 'DELEGAR (Activo)'; }
-              else if (estado === ST.DELEGADA) { boxClass = 'box-yellow'; textStatus = 'REVOCAR'; }
-              else if (estado === ST.LIBERADA_LEY) { boxClass = 'box-dark-green'; textStatus = 'LIBRE POR LEY'; }
-              else if (estado === ST.PROHIBIDA_LEY) { boxClass = 'box-dark-red'; textStatus = 'PROHIBIDO POR LEY'; }
-
-              const handleBoxClick = () => {
-                if (estado === ST.LIBERADA_LEY || estado === ST.PROHIBIDA_LEY) return; 
-                if (estado === ST.RETENIDA && currentUser !== ROLES.M3) {
-                  setSolicitarModal({ open: true, permissionId: p.id_fb, label: p.label, reason: RAZONES[0] });
-                } else if (estado === ST.DELEGADA) {
-                  if(window.confirm(`¿Revocar el permiso ${p.label} a los subordinados?`)) revocarPermiso(p.id_fb);
-                }
-              };
-
-              return (
-                <div key={p.id_fb} style={{background: '#f8fafc', padding: '15px', borderRadius: '6px', border: '1px solid #e2e8f0', display: 'flex'}}>
-                  <div style={{flex: 1, paddingRight: '20px'}}>
-                    <strong style={{color: '#0f172a', fontSize: '15px', display: 'block', marginBottom: '4px'}}>{p.label}</strong>
-                    <span style={{fontSize: '12px', color: '#475569', lineHeight: '1.4'}}>{p.name}</span>
-                  </div>
-                  <div style={{display: 'flex', flexDirection: 'column', alignItems: 'center', minWidth: '110px', justifyContent: 'center'}}>
-                    <div 
-                      onClick={handleBoxClick}
-                      className={`box-status ${boxClass} ${isPending ? 'flash-active' : ''}`}
-                      title={estado === ST.DELEGADA ? 'Clic para Revocar' : estado === ST.RETENIDA ? 'Clic para Solicitar' : ''}
-                    ></div>
-                    <span className="txt-status">{textStatus}</span>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
+          <button onClick={() => setCurrentUser(null)} style={{marginTop: 'auto', background: 'transparent', color: '#ef4444', border:'1px solid #ef4444', padding:'10px', width:'100%', cursor:'pointer', borderRadius: '6px', fontWeight: 'bold', fontSize: '12px'}}>
+            ⬅ CERRAR SESIÓN
+          </button>
         </div>
-      </div>
 
-      {solicitarModal.open && (
-        <div className="modal-overlay" style={{position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 100}}>
-          <div className="modal-content" style={{background: 'white', padding: '25px', borderRadius: '8px', width: '400px'}}>
-            <h3 style={{marginTop: 0}}>Solicitar {solicitarModal.label}</h3>
-            <p style={{fontSize: '13px', color: '#666'}}>Indique el motivo de la operación:</p>
-            <select value={solicitarModal.reason} onChange={(e) => setSolicitarModal({...solicitarModal, reason: e.target.value})} style={{width: '100%', padding: '10px', margin: '10px 0 20px 0', border: '1px solid #ccc', borderRadius: '4px'}}>
-              {RAZONES.map(r => <option key={r} value={r}>{r}</option>)}
-            </select>
-            <div style={{display: 'flex', justifyContent: 'flex-end', gap: '10px'}}>
-              <button onClick={() => setSolicitarModal({ open: false, permissionId: null, label: '', reason: RAZONES[0]})} style={{padding: '10px 15px', border: 'none', background: '#e2e8f0', cursor: 'pointer', borderRadius: '4px'}}>Cancelar</button>
-              <button onClick={enviarSolicitudConMotivo} style={{padding: '10px 15px', border: 'none', background: '#3b82f6', color: 'white', cursor: 'pointer', borderRadius: '4px'}}>Enviar</button>
-            </div>
+        {/* MAIN CONTENT */}
+        <div className="main-content">
+          
+          {/* NOTIFICACIONES */}
+          <div style={{background: 'white', padding: '15px 20px', borderRadius: '10px', marginBottom: '20px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)'}}>
+            <h3 style={{margin: '0 0 15px 0', display: 'flex', alignItems: 'center', fontSize: '16px'}}>
+              🔔 Solicitudes Pendientes 
+              {misNotificaciones.length > 0 && <span style={{background: '#ef4444', color: 'white', borderRadius: '50%', padding: '2px 8px', fontSize: '12px', marginLeft: '10px', animation: 'blink-border 1s infinite'}}>{misNotificaciones.length}</span>}
+            </h3>
+            {misNotificaciones.length === 0 ? <p style={{fontSize: '13px', color: '#64748b', margin: 0}}>No hay solicitudes en cola.</p> : (
+              <div className="noti-container">
+                {misNotificaciones.map(req => (
+                  <div key={req.id} className="noti-item">
+                    <p style={{margin: '0 0 5px 0', fontSize: '12px'}}><strong>{req.from}</strong> solicita:</p>
+                    <p style={{margin: '0 0 5px 0', fontSize: '14px', fontWeight: 'bold', color: '#0f172a'}}>{req.label}</p>
+                    <p style={{margin: '0 0 12px 0', fontSize: '12px', color: '#2563eb'}}>Motivo: {req.reason}</p>
+                    <div style={{display: 'flex', gap: '8px'}}>
+                      <button onClick={() => resolverSolicitud(req.id, true)} style={{flex: 1, background: '#22c55e', color: 'white', border: 'none', padding: '8px', borderRadius: '6px', cursor: 'pointer', fontSize:'12px', fontWeight: 'bold'}}>Aprobar</button>
+                      <button onClick={() => resolverSolicitud(req.id, false)} style={{flex: 1, background: '#ef4444', color: 'white', border: 'none', padding: '8px', borderRadius: '6px', cursor: 'pointer', fontSize:'12px', fontWeight: 'bold'}}>Denegar</button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
-        </div>
-      )}
 
-      {showConfig && currentUser !== ROLES.M1 && (
-        <div className="modal-overlay" style={{position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 100}}>
-          <div className="modal-content" style={{background: 'white', padding: '0', borderRadius: '8px', width: '750px', maxHeight: '90vh', display: 'flex', flexDirection: 'column'}}>
-            <div style={{padding: '20px', borderBottom: '1px solid #e2e8f0', background: '#f8fafc', borderRadius: '8px 8px 0 0'}}>
-              <h2 style={{margin: 0, fontSize: '18px'}}>Configuración Obligatoria: Modo Automático</h2>
-              <p style={{margin: '5px 0 0 0', fontSize: '12px', color: '#64748b'}}>Selecciona qué motivos desencadenan una respuesta automática para cada Regla.</p>
-            </div>
+          {/* MATRIZ DE REGLAS */}
+          <div style={{background: 'white', padding: '25px', borderRadius: '10px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)'}}>
+            <h2 style={{borderBottom: '2px solid #e2e8f0', paddingBottom: '15px', margin: '0 0 20px 0', fontSize: '18px', color: '#0f172a'}}>Matriz de Reglas de Enfrentamiento</h2>
             
-            <div style={{padding: '20px', overflowY: 'auto', flex: 1}}>
-              {PERMISOS_BASE.filter(p => p.type !== ST.LIBERADA_LEY && p.type !== ST.PROHIBIDA_LEY).map(p => (
-                <div key={p.id_fb} style={{background: '#fff', padding: '15px', border: '1px solid #e2e8f0', marginBottom: '15px', borderRadius: '6px', boxShadow: '0 1px 3px rgba(0,0,0,0.05)'}}>
-                  <h4 style={{margin: '0 0 10px 0', fontSize: '14px', color: '#0f172a'}}>{p.label}</h4>
-                  <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px'}}>
-                    <div>
-                      <span style={{color: '#16a34a', fontSize: '12px', fontWeight: 'bold'}}>✅ Liberar si piden para:</span>
-                      {RAZONES.map(razon => (
-                        <label key={`apr-${p.id_fb}-${razon}`} style={{display: 'flex', alignItems: 'center', gap: '5px', fontSize: '12px', marginTop: '5px'}}>
-                          <input type="checkbox" checked={autoConfig[currentUser][p.id_fb].aprobar.includes(razon)} onChange={(e) => handleConfigChange(p.id_fb, 'aprobar', razon, e.target.checked)} /> {razon}
-                        </label>
-                      ))}
+            <div>
+              {PERMISOS_BASE.map(p => {
+                const estado = permisos[currentUser][p.id_fb];
+                const isPending = requests.some(r => r.to === currentUser && r.permissionId === p.id_fb);
+
+                let boxClass = 'box-red';
+                let textStatus = 'SOLICITAR';
+                
+                if (estado === ST.LIBERADA) { boxClass = 'box-green'; textStatus = 'DELEGAR (ACTIVO)'; }
+                else if (estado === ST.DELEGADA) { boxClass = 'box-yellow'; textStatus = 'REVOCAR'; }
+                else if (estado === ST.LIBERADA_LEY) { boxClass = 'box-dark-green'; textStatus = 'LIBRE POR LEY'; }
+                else if (estado === ST.PROHIBIDA_LEY) { boxClass = 'box-dark-red'; textStatus = 'PROHIBIDO (LEY)'; }
+
+                const handleBoxClick = () => {
+                  if (estado === ST.LIBERADA_LEY || estado === ST.PROHIBIDA_LEY) return; 
+                  if (estado === ST.RETENIDA && currentUser !== ROLES.M3) {
+                    setSolicitarModal({ open: true, permissionId: p.id_fb, label: p.label, reason: RAZONES[0] });
+                  } else if (estado === ST.DELEGADA) {
+                    if(window.confirm(`¿Revocar el permiso ${p.label} a los subordinados?`)) revocarPermiso(p.id_fb);
+                  }
+                };
+
+                return (
+                  <div key={p.id_fb} className="permiso-row">
+                    <div className="permiso-text">
+                      <strong style={{color: '#0f172a', fontSize: '15px', display: 'block', marginBottom: '6px'}}>{p.label}</strong>
+                      <span style={{fontSize: '13px', color: '#475569', lineHeight: '1.5'}}>{p.name}</span>
                     </div>
-                    <div>
-                      <span style={{color: '#dc2626', fontSize: '12px', fontWeight: 'bold'}}>❌ Denegar si piden para:</span>
-                      {RAZONES.map(razon => (
-                        <label key={`rec-${p.id_fb}-${razon}`} style={{display: 'flex', alignItems: 'center', gap: '5px', fontSize: '12px', marginTop: '5px'}}>
-                          <input type="checkbox" checked={autoConfig[currentUser][p.id_fb].rechazar.includes(razon)} onChange={(e) => handleConfigChange(p.id_fb, 'rechazar', razon, e.target.checked)} /> {razon}
-                        </label>
-                      ))}
+                    <div className="box-container">
+                      <div 
+                        onClick={handleBoxClick}
+                        className={`box-status ${boxClass} ${isPending ? 'flash-active' : ''}`}
+                        title={estado === ST.DELEGADA ? 'Clic para Revocar' : estado === ST.RETENIDA ? 'Clic para Solicitar' : ''}
+                      ></div>
+                      <span className="txt-status">{textStatus}</span>
                     </div>
                   </div>
-                </div>
-              ))}
-            </div>
-
-            <div style={{padding: '15px 20px', borderTop: '1px solid #e2e8f0', background: '#f8fafc', borderRadius: '0 0 8px 8px', display: 'flex', justifyContent: 'flex-end', gap: '10px'}}>
-               <button onClick={() => setShowConfig(false)} style={{padding: '10px 20px', background: '#e2e8f0', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold'}}>Cancelar</button>
-               <button onClick={guardarConfiguracion} style={{padding: '10px 20px', background: '#3b82f6', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold'}}>Guardar y Activar Auto</button>
+                );
+              })}
             </div>
           </div>
         </div>
-      )}
-    </div>
+
+        {/* MODAL SOLICITUD */}
+        {solicitarModal.open && (
+          <div className="modal-overlay">
+            <div className="modal-content-sm">
+              <h3 style={{marginTop: 0, fontSize: '18px'}}>Solicitar {solicitarModal.label}</h3>
+              <p style={{fontSize: '13px', color: '#64748b', marginBottom: '15px'}}>Indique el motivo estratégico de la operación:</p>
+              <select value={solicitarModal.reason} onChange={(e) => setSolicitarModal({...solicitarModal, reason: e.target.value})} style={{width: '100%', padding: '12px', marginBottom: '20px', border: '1px solid #cbd5e1', borderRadius: '6px', fontSize: '14px'}}>
+                {RAZONES.map(r => <option key={r} value={r}>{r}</option>)}
+              </select>
+              <div style={{display: 'flex', gap: '10px'}}>
+                <button onClick={() => setSolicitarModal({ open: false, permissionId: null, label: '', reason: RAZONES[0]})} style={{flex: 1, padding: '12px', border: 'none', background: '#e2e8f0', color: '#475569', cursor: 'pointer', borderRadius: '6px', fontWeight: 'bold'}}>Cancelar</button>
+                <button onClick={enviarSolicitudConMotivo} style={{flex: 1, padding: '12px', border: 'none', background: '#3b82f6', color: 'white', cursor: 'pointer', borderRadius: '6px', fontWeight: 'bold'}}>Enviar a Revisión</button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* MODAL CONFIG AUTO */}
+        {showConfig && currentUser !== ROLES.M1 && (
+          <div className="modal-overlay">
+            <div className="modal-content-lg">
+              <div style={{padding: '20px 25px', borderBottom: '1px solid #e2e8f0', background: '#f8fafc'}}>
+                <h2 style={{margin: 0, fontSize: '18px', color: '#0f172a'}}>Configuración: Modo Automático</h2>
+                <p style={{margin: '5px 0 0 0', fontSize: '13px', color: '#64748b'}}>Selecciona qué motivos desencadenan una respuesta automática.</p>
+              </div>
+              
+              <div style={{padding: '25px', overflowY: 'auto', flex: 1, background: '#f1f5f9'}}>
+                {PERMISOS_BASE.filter(p => p.type !== ST.LIBERADA_LEY && p.type !== ST.PROHIBIDA_LEY).map(p => (
+                  <div key={p.id_fb} style={{background: '#fff', padding: '20px', border: '1px solid #e2e8f0', marginBottom: '15px', borderRadius: '8px', boxShadow: '0 1px 2px rgba(0,0,0,0.05)'}}>
+                    <h4 style={{margin: '0 0 15px 0', fontSize: '15px', color: '#0f172a', borderBottom: '1px solid #f1f5f9', paddingBottom: '10px'}}>{p.label} - {p.name.substring(0, 50)}...</h4>
+                    <div className="grid-config">
+                      <div style={{background: '#f0fdf4', padding: '15px', borderRadius: '6px', border: '1px solid #bbf7d0'}}>
+                        <span style={{color: '#16a34a', fontSize: '13px', fontWeight: 'bold', display: 'block', marginBottom: '10px'}}>✅ Liberar si piden para:</span>
+                        {RAZONES.map(razon => (
+                          <label key={`apr-${p.id_fb}-${razon}`} style={{display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', marginTop: '8px', cursor: 'pointer'}}>
+                            <input type="checkbox" checked={autoConfig[currentUser][p.id_fb].aprobar.includes(razon)} onChange={(e) => handleConfigChange(p.id_fb, 'aprobar', razon, e.target.checked)} /> {razon}
+                          </label>
+                        ))}
+                      </div>
+                      <div style={{background: '#fef2f2', padding: '15px', borderRadius: '6px', border: '1px solid #fecaca'}}>
+                        <span style={{color: '#dc2626', fontSize: '13px', fontWeight: 'bold', display: 'block', marginBottom: '10px'}}>❌ Denegar si piden para:</span>
+                        {RAZONES.map(razon => (
+                          <label key={`rec-${p.id_fb}-${razon}`} style={{display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', marginTop: '8px', cursor: 'pointer'}}>
+                            <input type="checkbox" checked={autoConfig[currentUser][p.id_fb].rechazar.includes(razon)} onChange={(e) => handleConfigChange(p.id_fb, 'rechazar', razon, e.target.checked)} /> {razon}
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div style={{padding: '20px 25px', borderTop: '1px solid #e2e8f0', background: '#f8fafc', display: 'flex', justifyContent: 'flex-end', gap: '12px'}}>
+                 <button onClick={() => setShowConfig(false)} style={{padding: '12px 25px', background: '#e2e8f0', color: '#475569', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold', fontSize: '13px'}}>Cancelar</button>
+                 <button onClick={guardarConfiguracion} style={{padding: '12px 25px', background: '#3b82f6', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold', fontSize: '13px'}}>Guardar y Activar Auto</button>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    </>
   );
 }
