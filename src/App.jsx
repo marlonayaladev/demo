@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { initializeApp } from "firebase/app";
 import { getDatabase, ref, onValue, set } from "firebase/database";
+import html2pdf from 'html2pdf.js'; 
 import './App.css'; 
 
 // --- 1. CONFIGURACIÓN DE FIREBASE ---
@@ -17,7 +18,6 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
 
-// --- 2. HOOK MÁGICO PARA LA NUBE ---
 function useFirebaseState(key, initialValue) {
   const [state, setState] = useState(initialValue);
   const [loaded, setLoaded] = useState(false);
@@ -44,98 +44,97 @@ function useFirebaseState(key, initialValue) {
   return [state, setValue, loaded];
 }
 
-// --- CONFIGURACIÓN DE USUARIOS Y RAZONES ---
-const ROLES = { M3: 'JEFE DEL CCFFAA', M2: 'JEFE DEL CE-VRAEM', M1: 'CMDTE 31 BRIG INF' };
+// --- DENOMINACIONES ACTUALIZADAS ---
+const ROLES = { M3: 'JEFE DEL CCFFAA', M2: 'CG - CEVRAEM', M1: 'CG - 31 BRIG INF' };
 const RAZONES = ['Situación de Emergencia', 'Apoyo Táctico', 'Mantenimiento']; 
 
-// --- BASE DE DATOS DE REGLAS (Las 52 del Excel) ---
-// TRUCO SENIOR: Le agregamos .replace('.', '_') al ID para que Firebase no colapse, 
-// y creamos un 'label' para mostrar el texto real con el punto en la pantalla.
+const ST = {
+  LIBERADA: 'GREEN',
+  DELEGADA: 'YELLOW',
+  RETENIDA: 'RED',
+  LIBERADA_LEY: 'DARK_GREEN',
+  PROHIBIDA_LEY: 'DARK_RED'
+};
+
 const RAW_PERMISOS = [
-  { id: 'E-1.1', name: 'Se permite el empleo de la fuerza, hasta el nivel letal de armas de fuego pequeñas y ligeras, en defensa propia, contra objetivos militares; durante el cumplimiento de sus deberes y funciones' },
-  { id: 'E-1.2', name: 'Se permite el empleo de la fuerza, hasta el nivel letal de armas de fuego pequeñas y ligeras, en defensa de la Unidad, contra objetivos militares; durante el cumplimiento de sus deberes y funciones' },
-  { id: 'E-2.1', name: 'Se permite el empleo de la fuerza, hasta el nivel letal de armas de fuego pequeñas y ligeras; contra objetivos militares; para la protección y defensa de terceras personas (civiles, miembros de la PNP y otros miembros de las Fuerzas Armadas).' },
-  { id: 'E-2.2', name: 'Se permite el empleo de la fuerza, hasta el nivel letal de armas convencionales y otras capacidades de nivel operacional; contra objetivos militares; para la protección y defensa de terceras personas (civiles, miembros de la PNP y otros miembros de las Fuerzas Armadas).' },
-  { id: 'E-2.3', name: 'Se permite el empleo de la fuerza hasta el nivel letal de armas convencionales y otras capacidades de nivel estratégico; contra objetivos militares; para la protección y defensa de terceras personas (civiles, miembros de la PNP y otros miembros de las Fuerzas Armadas).' },
-  { id: 'E-3.1', name: 'Se permite el empleo de la fuerza, hasta el nivel letal de las armas de fuego pequeñas y ligeras; contra objetivos militares; para el cumplimiento de la misión.' },
-  { id: 'E-3.2', name: 'Se permite el empleo de la fuerza, hasta el nivel letal de las armas pesadas y convencionales de nivel operacional y otras capacidades; contra objetivos militares; para el cumplimiento de la misión.' },
-  { id: 'E-3.3', name: 'Se permite el empleo de la fuerza hasta el nivel letal de las armas convencionales y otras capacidades de nivel estratégico; contra objetivos militares; para el cumplimiento de la misión.' },
-  { id: 'E-3.4', name: 'Se permite el empleo de la fuerza, hasta el nivel letal; contra objetivos militares (personas) que, durante el cumplimiento de la misión, estando fuera de combate (rendidos, heridos o detenidos), pongan en peligro inminente de muerte o lesiones graves a otras personas.' },
-  { id: 'E-4.1', name: 'Se permite el empleo de la fuerza, hasta el nivel letal de armas de fuego pequeñas y ligeras; contra los integrantes de grupos hostiles, que interfieran con la libertad de movimiento y maniobra de una fuerza militar y/o la libertad de tránsito de personas, vehículos, embarcaciones y otros.' },
-  { id: 'E-4.2', name: 'Se permite el empleo de la fuerza hasta el nivel letal de armas pesadas y convencionales de nivel operacional, y otras capacidades; contra los integrantes de grupos hostiles que, interfieran con la libertad de movimiento y maniobra de una fuerza militar y/o la libertad de tránsito de personas, vehículos, embarcaciones y otros.' },
-  { id: 'E-4.3', name: 'Se permite el empleo de la fuerza hasta el nivel letal de armas convencionales y otras capacidades de nivel estratégico; contra los miembros de grupos hostiles, que interfieran con la libertad de movimiento y maniobra de una fuerza militar y/o la libertad de tránsito de personas, vehículos, embarcaciones y otros.' },
-  { id: 'E-5.1', name: 'Se permite el empleo de la fuerza letal de armas de fuego pequeñas y ligeras; contra objetivos militares que, estando fuera de combate (rendidos, heridos o detenidos), durante las operaciones de intervención y la búsqueda de personas; pongan en peligro inminente de muerte o lesiones graves a otras personas.' },
-  { id: 'E-5.2', name: 'Se permite el empleo de la fuerza letal de armas de fuego pequeñas y ligeras; contra objetivos militares; durante su búsqueda e intervención; siempre que, no se hayan rendido o no se encuentren fuera de combate.' },
-  { id: 'E-5.3', name: 'Se permite el empleo de la fuerza hasta el nivel letal de las armas de fuego pequeñas y ligeras; contra objetivos militares; para evitar su escape.' },
-  { id: 'E-5.4', name: 'Se permite el empleo de la fuerza hasta el nivel letal de armas pesadas y convencionales de nivel operacional, y otras capacidades; contra objetivos militares; durante su búsqueda e intervención.' },
-  { id: 'E-5.5', name: 'Se permite el empleo de la fuerza hasta el nivel letal de las armas convencionales y otras capacidades de nivel estratégico; contra objetivos militares; durante su búsqueda e intervención.' },
-  { id: 'E-6.1', name: 'Se permite el empleo de la fuerza, hasta el nivel letal de armas de fuego pequeñas y ligeras; contra objetivos militares; para liberar personas retenidas ilegalmente o tomadas como rehenes.' },
-  { id: 'E-6.2', name: 'Se permite el empleo de la fuerza, hasta el nivel letal de armas convencionales y otras capacidades de nivel operacional; contra objetivos militares; para liberar personas retenidas ilegalmente o tomadas como rehenes.' },
-  { id: 'E-6.3', name: 'Se permite el empleo de la fuerza, hasta el nivel letal de armas convencionales y otras capacidades de nivel estratégico; contra objetivos militares; para liberar personas retenidas ilegalmente o tomados como rehenes.' },
-  { id: 'E-6.4', name: 'Se permite el empleo de la fuerza, hasta el nivel letal; contra objetivos militares; para liberar personas retenidas ilegalmente o tomadas como rehenes; siempre que, exista peligro inminente de muerte o lesiones graves de los rehenes.' },
-  { id: 'E-7.1', name: 'Se permite el empleo de la fuerza, hasta el nivel letal de armas de fuego pequeñas y ligeras, contra objetivos militares; para proteger instalaciones de uso militar, vehículos, buques, embarcaciones y/o aeronaves de las Fuerzas Armadas; así como, instalaciones estratégicas, servicios públicos esenciales, activos críticos nacionales y recursos clave entre otros.' },
-  { id: 'E-7.2', name: 'Se permite el empleo de la fuerza, hasta el nivel letal de armas pesadas y convencionales de nivel operacional, y otras capacidades; contra los objetivos militares; para proteger instalaciones de uso militar, vehículos, buques, embarcaciones y/o aeronaves de las Fuerzas Armadas; así como, instalaciones estratégicas, servicios públicos esenciales, activos críticos nacionales y recursos clave entre otros.' },
-  { id: 'E-7.3', name: 'Se permite el empleo de la fuerza, hasta el nivel letal de armas convencionales y otras capacidades de nivel estratégico; contra objetivos militares; para proteger instalaciones de uso militar, vehículos, buques, embarcaciones y/o aeronaves de las Fuerzas Armadas; así como, instalaciones estratégicas, servicios públicos esenciales, activos críticos nacionales y recursos clave entre otros.' },
-  { id: 'E-7.4', name: 'Se permite el empleo de la fuerza, hasta el nivel letal de armas de fuego pequeñas y ligeras; contra objetivos militares; para liberar, recuperar, ocupar, controlar y registrar instalaciones, vehículos, buques, embarcaciones y/o aeronaves, entre otros.' },
-  { id: 'E-7.5', name: 'Se permite el empleo de la fuerza, hasta el nivel letal de armas pesadas y convencionales de nivel operacional, y otras capacidades; contra objetivos militares; para liberar, recuperar, ocupar, controlar y registrar instalaciones, vehículos, buques, embarcaciones y/o aeronaves, entre otros.' },
-  { id: 'E-7.6', name: 'Se permite el empleo de la fuerza, hasta el nivel letal de armas convencionales y otras capacidades de nivel estratégico; contra objetivos militares; para liberar, recuperar, ocupar, controlar y registrar instalaciones, vehículos, buques, embarcaciones y/o aeronaves, entre otros.' },
-  { id: 'E-8.1', name: 'Se permite el empleo de la fuerza, hasta el nivel letal de armas de fuego pequeñas y ligeras; contra objetivos militares; durante la configuración y ejecución de maniobras tácticas para el cumplimiento de la misión.' },
-  { id: 'E-8.2', name: 'Se permite el empleo de la fuerza, hasta el nivel letal de armas pesadas y convencionales de nivel operacional, y otras capacidades; objetivos militares; durante la configuración y ejecución de maniobras de nivel operacional y táctico para el cumplimiento de la misión.' },
-  { id: 'E-8.3', name: 'Se permite el empleo de la fuerza, hasta el nivel letal de armas convencionales y otras capacidades de nivel estratégico; contra objetivos militares; durante la configuración y ejecución de maniobras estratégicas, operacionales y tácticas para el cumplimiento de la misión' },
-  { id: 'E-9.1', name: 'Se permite el empleo de iluminación con pirotécnicos, granadas o munición de iluminación; durante las acciones de seguimiento, vigilancia y desvío de objetivos militares en espacios acuáticos nacionales.' },
-  { id: 'E-9.2', name: 'Se permite el empleo de la fuerza, hasta el nivel letal de armas pequeñas y ligeras; contra objetivos militares; durante las acciones de seguimiento, vigilancia y desvío; en espacios acuáticos nacionales.' },
-  { id: 'E-9.3', name: 'Se permite el empleo de la fuerza, hasta el nivel letal de armas pesadas y convencionales de nivel operacional, y otras capacidades; contra objetivos militares; durante las acciones de seguimiento, vigilancia y desvío; en espacios acuáticos nacionales.' },
-  { id: 'E-9.4', name: 'Se permite el empleo de fuego incapacitante durante las acciones de seguimiento, vigilancia y desvío de embarcaciones tripulados por objetivos militares; en espacios acuáticos nacionales.' },
-  { id: 'E-9.5', name: 'Se permite el empleo de la fuerza, hasta el nivel letal de armas convencionales y otras capacidades de nivel estratégico; contra objetivos militares; durante las acciones de seguimiento, vigilancia y desvío; en espacios acuáticos nacionales.' },
-  { id: 'E-10.1', name: 'Se permite el empleo de iluminación con pirotécnicos, granadas o munición de iluminación; durante las acciones de interdicción de objetivos militares; en espacios acuáticos nacionales.' },
-  { id: 'E-10.2', name: 'Se permite el empleo de la fuerza, hasta el nivel letal de armas pequeñas y ligeras; contra objetivos militares; durante las acciones de interdicción; en espacios acuáticos nacionales.' },
-  { id: 'E-10.3', name: 'Se permite el empleo de la fuerza, hasta el nivel letal de armas pesadas y convencionales de nivel operacional, y otras capacidades; contra objetivos militares; durante las acciones de interdicción; en espacios acuáticos nacionales.' },
-  { id: 'E-10.4', name: 'Se permite el empleo de fuego incapacitante durante las acciones de interdicción de embarcaciones tripulados por objetivos militares; en espacios acuáticos nacionales.' },
-  { id: 'E-10.5', name: 'Se permite el empleo de la fuerza, hasta el nivel letal de armas convencionales y otras capacidades de nivel estratégico; contra objetivos militares; durante las acciones de interdicción; en espacios acuáticos nacionales' },
-  { id: 'E-10.6', name: 'Se permite el empleo de la fuerza, hasta el nivel letal; contra objetivos militares; durante las acciones de interdicción en espacios acuáticos nacionales; siempre que, exista peligro inminente de muerte o lesiones graves de terceras personas.' },
-  { id: 'E-11.1', name: 'Se permite el empleo de la fuerza, hasta el nivel de disparos de advertencia, en el espacio aéreo nacional; durante las medidas de identificación, intervención y persuasión de objetivos militares.' },
-  { id: 'E-11.2', name: 'Se permite el empleo de la fuerza letal, en el espacio aéreo nacional; para neutralizar objetivos militares; siempre que, las medidas de identificación, intervención o persuasión, respectivamente, no hayan logrado los efectos correspondientes.' },
-  { id: 'E-11.3', name: 'Se permite el empleo de la fuerza letal, en el espacio aéreo nacional; para neutralizar objetivos militares; siempre que, exista peligro inminente de muerte o lesiones graves de terceras personas.' },
-  { id: 'E-12.1', name: 'Se permite el uso de la fuerza, hasta el nivel letal de armas de fuego pequeñas y ligeras, contra objetivos militares; para su captura, conquista, destrucción, degradación, neutralización o control; durante el desarrollo de operaciones militares planificadas.' },
-  { id: 'E-12.2', name: 'Se permite el uso de la fuerza, hasta el nivel letal de armas pesadas y convencionales de nivel operacional, y otras capacidades, contra objetivos militares; para su captura, conquista, destrucción, degradación, neutralización o control; durante el desarrollo de operaciones militares planificadas.' },
-  { id: 'E-12.3', name: 'Se permite el uso de la fuerza, hasta el nivel letal de armas convencionales y otras capacidades de nivel estratégico, contra objetivos militares; para su captura, conquista, destrucción, degradación, neutralización o control; durante el desarrollo de operaciones militares planificadas.' },
-  { id: 'E-13.1', name: 'Empleo de la fuerza no letal (menos letal) en forma arbitraria; en toda circunstancia y lugar.' },
-  { id: 'E-13.2', name: 'Empleo de la fuerza letal, en forma arbitraria; en toda circunstancia y lugar.' },
-  { id: 'E-13.3', name: 'Empleo de la fuerza no letal (menos letal); en toda circunstancia y lugar; y que existe alto grado de certeza de que el daño incidental sería excesivo comparado con la ventaja militar concreta y directa prevista.' },
-  { id: 'E-13.4', name: 'Empleo de la fuerza letal; contra grupos hostiles, en toda circunstancia y lugar; y que existe alto grado de certeza de que el daño incidental sería excesivo comparado con la ventaja militar concreta y directa prevista.' },
-  { id: 'E-13.5', name: 'Realizar ataques indiscriminados' }
+  { id: 'E-1.1', type: ST.LIBERADA_LEY, name: 'Se permite el empleo de la fuerza, hasta el nivel letal de armas de fuego pequeñas y ligeras, en defensa propia...' },
+  { id: 'E-1.2', type: ST.LIBERADA_LEY, name: 'Se permite el empleo de la fuerza, hasta el nivel letal de armas de fuego pequeñas y ligeras, en defensa de la Unidad...' },
+  { id: 'E-2.1', type: ST.LIBERADA, name: 'Se permite el empleo de la fuerza... para la protección y defensa de terceras personas.' },
+  { id: 'E-2.2', type: ST.LIBERADA, name: 'Se permite el empleo de la fuerza, hasta el nivel letal de armas convencionales... para la protección de terceras personas.' },
+  { id: 'E-2.3', type: ST.LIBERADA, name: 'Se permite el empleo de la fuerza hasta el nivel letal de armas convencionales estratégicas...' },
+  { id: 'E-3.1', type: ST.LIBERADA, name: 'Se permite el empleo de la fuerza... para el cumplimiento de la misión.' },
+  { id: 'E-3.2', type: ST.LIBERADA, name: 'Se permite el empleo de la fuerza, hasta el nivel letal de armas pesadas... para el cumplimiento de la misión.' },
+  { id: 'E-3.3', type: ST.LIBERADA, name: 'Se permite el empleo de la fuerza hasta el nivel letal de armas convencionales estratégicas... para el cumplimiento de la misión.' },
+  { id: 'E-3.4', type: ST.LIBERADA, name: 'Se permite el empleo de la fuerza... contra objetivos fuera de combate que pongan en peligro inminente a otros.' },
+  { id: 'E-4.1', type: ST.LIBERADA, name: 'Se permite el empleo de la fuerza... contra grupos hostiles que interfieran con la libertad de movimiento.' },
+  { id: 'E-4.2', type: ST.LIBERADA, name: 'Se permite el empleo de la fuerza armas pesadas... contra grupos hostiles que interfieran con la libertad de movimiento.' },
+  { id: 'E-4.3', type: ST.LIBERADA, name: 'Se permite el empleo de la fuerza estratégica... contra miembros de grupos hostiles que interfieran con la libertad de movimiento.' },
+  { id: 'E-5.1', type: ST.LIBERADA, name: 'Se permite el empleo de la fuerza letal... durante operaciones de intervención si ponen en peligro a otros.' },
+  { id: 'E-5.2', type: ST.LIBERADA, name: 'Se permite el empleo de la fuerza letal... durante su búsqueda e intervención si no se han rendido.' },
+  { id: 'E-5.3', type: ST.LIBERADA, name: 'Se permite el empleo de la fuerza letal... para evitar su escape.' },
+  { id: 'E-5.4', type: ST.LIBERADA, name: 'Se permite el empleo de armas pesadas... durante su búsqueda e intervención.' },
+  { id: 'E-5.5', type: ST.LIBERADA, name: 'Se permite el empleo de armas estratégicas... durante su búsqueda e intervención.' },
+  { id: 'E-6.1', type: ST.LIBERADA, name: 'Se permite el empleo de la fuerza... para liberar personas retenidas o rehenes.' },
+  { id: 'E-6.2', type: ST.LIBERADA, name: 'Se permite el empleo de armas convencionales... para liberar personas retenidas o rehenes.' },
+  { id: 'E-6.3', type: ST.LIBERADA, name: 'Se permite el empleo de armas estratégicas... para liberar personas retenidas o rehenes.' },
+  { id: 'E-6.4', type: ST.LIBERADA, name: 'Se permite el empleo de la fuerza letal... para liberar rehenes si existe peligro inminente de muerte.' },
+  { id: 'E-7.1', type: ST.LIBERADA, name: 'Se permite el empleo de la fuerza... para proteger instalaciones de uso militar y activos críticos.' },
+  { id: 'E-7.2', type: ST.LIBERADA, name: 'Se permite el empleo de armas pesadas... para proteger instalaciones militares y activos críticos.' },
+  { id: 'E-7.3', type: ST.LIBERADA, name: 'Se permite el empleo de armas estratégicas... para proteger instalaciones militares y activos críticos.' },
+  { id: 'E-7.4', type: ST.LIBERADA, name: 'Se permite el empleo de la fuerza... para liberar, recuperar o controlar instalaciones y vehículos.' },
+  { id: 'E-7.5', type: ST.LIBERADA, name: 'Se permite el empleo de armas pesadas... para liberar, recuperar o controlar instalaciones y vehículos.' },
+  { id: 'E-7.6', type: ST.LIBERADA, name: 'Se permite el empleo de armas estratégicas... para liberar, recuperar o controlar instalaciones y vehículos.' },
+  { id: 'E-8.1', type: ST.LIBERADA, name: 'Se permite el empleo de la fuerza... durante la configuración y ejecución de maniobras tácticas.' },
+  { id: 'E-8.2', type: ST.LIBERADA, name: 'Se permite el empleo de armas pesadas... durante maniobras tácticas y operacionales.' },
+  { id: 'E-8.3', type: ST.LIBERADA, name: 'Se permite el empleo de armas estratégicas... durante maniobras tácticas y operacionales.' },
+  { id: 'E-9.1', type: ST.LIBERADA, name: 'Se permite el empleo de iluminación... durante acciones de seguimiento en espacios acuáticos.' },
+  { id: 'E-9.2', type: ST.LIBERADA, name: 'Se permite el empleo de la fuerza... durante acciones de seguimiento en espacios acuáticos.' },
+  { id: 'E-9.3', type: ST.LIBERADA, name: 'Se permite el empleo de armas pesadas... durante acciones de seguimiento en espacios acuáticos.' },
+  { id: 'E-9.4', type: ST.LIBERADA, name: 'Se permite el empleo de fuego incapacitante... durante seguimiento en espacios acuáticos.' },
+  { id: 'E-9.5', type: ST.LIBERADA, name: 'Se permite el empleo de armas estratégicas... durante seguimiento en espacios acuáticos.' },
+  { id: 'E-10.1', type: ST.LIBERADA, name: 'Se permite el empleo de iluminación... durante interdicción en espacios acuáticos.' },
+  { id: 'E-10.2', type: ST.LIBERADA, name: 'Se permite el empleo de la fuerza... durante interdicción en espacios acuáticos.' },
+  { id: 'E-10.3', type: ST.LIBERADA, name: 'Se permite el empleo de armas pesadas... durante interdicción en espacios acuáticos.' },
+  { id: 'E-10.4', type: ST.LIBERADA, name: 'Se permite el empleo de fuego incapacitante... durante interdicción en espacios acuáticos.' },
+  { id: 'E-10.5', type: ST.LIBERADA, name: 'Se permite el empleo de armas estratégicas... durante interdicción en espacios acuáticos.' },
+  { id: 'E-10.6', type: ST.LIBERADA, name: 'Se permite el empleo de la fuerza letal... durante interdicción si existe peligro inminente de muerte.' },
+  { id: 'E-11.1', type: ST.LIBERADA, name: 'Se permite el empleo de disparos de advertencia en el espacio aéreo nacional.' },
+  { id: 'E-11.2', type: ST.LIBERADA, name: 'Se permite el empleo de fuerza letal en el espacio aéreo... para neutralizar si la persuasión falla.' },
+  { id: 'E-11.3', type: ST.LIBERADA, name: 'Se permite el empleo de fuerza letal en el espacio aéreo... si existe peligro inminente de muerte.' },
+  { id: 'E-12.1', type: ST.LIBERADA, name: 'Se permite el uso de la fuerza... para captura y destrucción durante operaciones planificadas.' },
+  { id: 'E-12.2', type: ST.LIBERADA, name: 'Se permite el uso de armas pesadas... para captura y destrucción durante operaciones planificadas.' },
+  { id: 'E-12.3', type: ST.LIBERADA, name: 'Se permite el uso de armas estratégicas... para captura y destrucción durante operaciones planificadas.' },
+  { id: 'E-13.1', type: ST.PROHIBIDA_LEY, name: 'Empleo de la fuerza no letal en forma arbitraria; en toda circunstancia y lugar.' },
+  { id: 'E-13.2', type: ST.PROHIBIDA_LEY, name: 'Empleo de la fuerza letal, en forma arbitraria; en toda circunstancia y lugar.' },
+  { id: 'E-13.3', type: ST.PROHIBIDA_LEY, name: 'Empleo de la fuerza con daño incidental excesivo comparado con la ventaja militar.' },
+  { id: 'E-13.4', type: ST.PROHIBIDA_LEY, name: 'Empleo de fuerza letal contra grupos con daño incidental excesivo.' },
+  { id: 'E-13.5', type: ST.PROHIBIDA_LEY, name: 'Realizar ataques indiscriminados.' }
 ];
 
-// Aquí aplicamos el mapeo para Firebase
-const PERMISOS_BASE = RAW_PERMISOS.map(p => ({
-  ...p,
-  id: p.id.replace('.', '_'), // E-1.1 se vuelve E-1_1 (Firebase feliz)
-  label: p.id // Guardamos el E-1.1 original para mostrarlo en pantalla (Cliente feliz)
-}));
+const PERMISOS_BASE = RAW_PERMISOS.map(p => ({ ...p, id_fb: p.id.replace('.', '_'), label: p.id }));
 
-const initialConfigPerRole = PERMISOS_BASE.reduce((acc, p) => {
-  acc[p.id] = { aprobar: [], rechazar: [] };
-  return acc;
-}, {});
+const initPermisos = () => {
+  const matriz = { [ROLES.M3]: {}, [ROLES.M2]: {}, [ROLES.M1]: {} };
+  PERMISOS_BASE.forEach(p => {
+    matriz[ROLES.M3][p.id_fb] = p.type === ST.LIBERADA_LEY ? ST.LIBERADA_LEY : p.type === ST.PROHIBIDA_LEY ? ST.PROHIBIDA_LEY : ST.LIBERADA;
+    matriz[ROLES.M2][p.id_fb] = p.type === ST.LIBERADA_LEY ? ST.LIBERADA_LEY : p.type === ST.PROHIBIDA_LEY ? ST.PROHIBIDA_LEY : ST.RETENIDA;
+    matriz[ROLES.M1][p.id_fb] = p.type === ST.LIBERADA_LEY ? ST.LIBERADA_LEY : p.type === ST.PROHIBIDA_LEY ? ST.PROHIBIDA_LEY : ST.RETENIDA;
+  });
+  return matriz;
+};
+
+const initialConfigPerRole = PERMISOS_BASE.reduce((acc, p) => { acc[p.id_fb] = { aprobar: [], rechazar: [] }; return acc; }, {});
 
 export default function App() {
   const [currentUser, setCurrentUser] = useState(null);
+  const [isDownloading, setIsDownloading] = useState(false);
   
-  const [permisos, setPermisos, load1] = useFirebaseState('vraem_permisos', {
-    [ROLES.M3]: PERMISOS_BASE.reduce((acc, p) => ({ ...acc, [p.id]: true }), {}),
-    [ROLES.M2]: PERMISOS_BASE.reduce((acc, p) => ({ ...acc, [p.id]: false }), {}),
-    [ROLES.M1]: PERMISOS_BASE.reduce((acc, p) => ({ ...acc, [p.id]: false }), {})
-  });
-  
-  const [requests, setRequests, load2] = useFirebaseState('vraem_requests', []);
-  const [autoModeActive, setAutoModeActive, load3] = useFirebaseState('vraem_autoModeActive', { [ROLES.M3]: false, [ROLES.M2]: false });
-  const [autoConfig, setAutoConfig, load4] = useFirebaseState('vraem_autoConfig', {
-    [ROLES.M3]: initialConfigPerRole,
-    [ROLES.M2]: initialConfigPerRole
-  });
+  const [permisos, setPermisos, load1] = useFirebaseState('vraem_permisos_v3', initPermisos());
+  const [requests, setRequests, load2] = useFirebaseState('vraem_requests_v3', []);
+  const [autoModeActive, setAutoModeActive, load3] = useFirebaseState('vraem_autoModeActive_v3', { [ROLES.M3]: false, [ROLES.M2]: false });
+  const [autoConfig, setAutoConfig, load4] = useFirebaseState('vraem_autoConfig_v3', { [ROLES.M3]: initialConfigPerRole, [ROLES.M2]: initialConfigPerRole });
 
-  const [solicitarModal, setSolicitarModal] = useState({ open: false, permissionId: null, reason: RAZONES[0] });
-  const [showNotificaciones, setShowNotificaciones] = useState(false);
+  const [solicitarModal, setSolicitarModal] = useState({ open: false, permissionId: null, label: '', reason: RAZONES[0] });
   const [showConfig, setShowConfig] = useState(false);
 
   const isReady = load1 && load2 && load3 && load4;
@@ -143,182 +142,380 @@ export default function App() {
   const handleConfigChange = (pId, accion, razon, isChecked) => {
     setAutoConfig(prev => {
       const newState = { ...prev };
-      const configDelUsuarioActual = { ...newState[currentUser] };
-      const configDeLaRegla = { ...configDelUsuarioActual[pId] };
-
+      const c = { ...newState[currentUser][pId] };
       if (isChecked) {
-        configDeLaRegla[accion] = [...configDeLaRegla[accion], razon];
-        const otraAccion = accion === 'aprobar' ? 'rechazar' : 'aprobar';
-        configDeLaRegla[otraAccion] = configDeLaRegla[otraAccion].filter(r => r !== razon);
+        c[accion] = [...c[accion], razon];
+        const otra = accion === 'aprobar' ? 'rechazar' : 'aprobar';
+        c[otra] = c[otra].filter(r => r !== razon);
       } else {
-        configDeLaRegla[accion] = configDeLaRegla[accion].filter(r => r !== razon);
+        c[accion] = c[accion].filter(r => r !== razon);
       }
-
-      configDelUsuarioActual[pId] = configDeLaRegla;
-      newState[currentUser] = configDelUsuarioActual;
+      newState[currentUser][pId] = c;
       return newState;
     });
   };
 
+  const activarAutoMode = () => setShowConfig(true);
+
+  const desactivarAutoMode = () => {
+    setAutoModeActive(prev => ({ ...prev, [currentUser]: false }));
+    setAutoConfig(prev => ({ ...prev, [currentUser]: initialConfigPerRole }));
+    alert("Modo Manual activado. Se ha reiniciado tu configuración de automatización.");
+  };
+
+  const guardarConfiguracion = () => {
+    setAutoModeActive(prev => ({ ...prev, [currentUser]: true }));
+    setShowConfig(false);
+    alert("¡Configuración guardada! Modo Automático ACTIVADO.");
+  };
+
   const enviarSolicitudConMotivo = () => {
     const superior = currentUser === ROLES.M1 ? ROLES.M2 : ROLES.M3;
-    const { permissionId, reason } = solicitarModal;
-    const labelParaAlerta = permissionId.replace('_', '.'); // Convertimos E-1_1 a E-1.1 para la alerta
-    let bypassAutoApprove = false;
-
+    const { permissionId, label, reason } = solicitarModal;
+    
     if (autoModeActive[superior]) {
-      const configDelSuperior = autoConfig[superior][permissionId];
-      
-      if (configDelSuperior.aprobar.includes(reason)) {
-        if (superior !== ROLES.M3 && !permisos[superior][permissionId]) {
-          alert(`ATENCIÓN: El ${superior} programó la auto-aprobación, pero él NO posee el permiso ${labelParaAlerta}. Pasa a revisión manual.`);
-          bypassAutoApprove = true;
+      const cSuperior = autoConfig[superior][permissionId];
+      if (cSuperior.aprobar.includes(reason)) {
+        if (superior !== ROLES.M3 && permisos[superior][permissionId] !== ST.LIBERADA && permisos[superior][permissionId] !== ST.DELEGADA) {
+          alert(`El ${superior} configuró auto-aprobación, pero él no posee la regla ${label}. Pasa a revisión manual.`);
         } else {
-          alert(`¡Liberado automáticamente! El ${superior} aprobó la regla ${labelParaAlerta} para "${reason}".`);
-          setPermisos(prev => ({ ...prev, [currentUser]: { ...prev[currentUser], [permissionId]: true } }));
-          setSolicitarModal({ open: false, permissionId: null, reason: RAZONES[0] });
+          setPermisos(prev => {
+            const copy = { ...prev };
+            copy[currentUser][permissionId] = ST.LIBERADA;
+            copy[superior][permissionId] = ST.DELEGADA;
+            return copy;
+          });
+          alert(`¡Liberado automáticamente por el ${superior}!`);
+          setSolicitarModal({ open: false, permissionId: null, label: '', reason: RAZONES[0] });
           return;
         }
-      } else if (configDelSuperior.rechazar.includes(reason)) {
-        alert(`Denegado. El ${superior} tiene bloqueada la liberación de ${labelParaAlerta} para "${reason}".`);
-        setSolicitarModal({ open: false, permissionId: null, reason: RAZONES[0] });
+      } else if (cSuperior.rechazar.includes(reason)) {
+        alert(`Denegado automáticamente por el ${superior}.`);
+        setSolicitarModal({ open: false, permissionId: null, label: '', reason: RAZONES[0] });
         return;
       }
     }
 
-    const newReq = { id: Date.now(), from: currentUser, to: superior, permissionId, reason };
-    setRequests(prev => [...prev, newReq]);
-    
-    if (autoModeActive[superior] && !bypassAutoApprove) {
-        alert('Enviado a revisión. (El superior no tiene regla automática para esta razón).');
-    } else if (!autoModeActive[superior]) {
-        alert('Solicitud enviada exitosamente a revisión manual.');
-    }
-    
-    setSolicitarModal({ open: false, permissionId: null, reason: RAZONES[0] });
+    setRequests(prev => [...prev, { id: Date.now(), from: currentUser, to: superior, permissionId, label, reason }]);
+    alert('Solicitud enviada a revisión.');
+    setSolicitarModal({ open: false, permissionId: null, label: '', reason: RAZONES[0] });
   };
 
   const resolverSolicitud = (reqId, aprobar) => {
     const req = requests.find(r => r.id === reqId);
     if (aprobar) {
-      if (currentUser !== ROLES.M3 && !permisos[currentUser][req.permissionId]) {
-        alert(`❌ ERROR DE SEGURIDAD: No puedes liberar la regla ${req.permissionId.replace('_', '.')} porque tú no la tienes habilitada.`);
+      if (currentUser !== ROLES.M3 && permisos[currentUser][req.permissionId] !== ST.LIBERADA && permisos[currentUser][req.permissionId] !== ST.DELEGADA) {
+        alert(`❌ ERROR: No tienes la regla ${req.label} en Verde. No puedes delegarla.`);
         return;
       }
-      setPermisos(prev => ({ ...prev, [req.from]: { ...prev[req.from], [req.permissionId]: true } }));
+      setPermisos(prev => {
+        const copy = { ...prev };
+        copy[req.from][req.permissionId] = ST.LIBERADA;
+        copy[currentUser][req.permissionId] = ST.DELEGADA;
+        return copy;
+      });
     }
     setRequests(prev => prev.filter(r => r.id !== reqId));
-    if (requests.length === 1) setShowNotificaciones(false);
+  };
+
+  const revocarPermiso = (pId_fb) => {
+    setPermisos(prev => {
+      const copy = { ...prev };
+      copy[currentUser][pId_fb] = ST.LIBERADA; 
+      if (currentUser === ROLES.M3) {
+        copy[ROLES.M2][pId_fb] = ST.RETENIDA;
+        copy[ROLES.M1][pId_fb] = ST.RETENIDA;
+      } else if (currentUser === ROLES.M2) {
+        copy[ROLES.M1][pId_fb] = ST.RETENIDA;
+      }
+      return copy;
+    });
+    alert("Permiso revocado a los escalones subordinados.");
+  };
+
+  const descargarDocumento = () => {
+    setIsDownloading(true);
+    const estadoActual = permisos[currentUser];
+    
+    const liberadas = PERMISOS_BASE.filter(p => estadoActual[p.id_fb] === ST.LIBERADA || estadoActual[p.id_fb] === ST.LIBERADA_LEY);
+    const delegadas = PERMISOS_BASE.filter(p => estadoActual[p.id_fb] === ST.DELEGADA);
+    
+    const retenidasDirectas = [];
+    const retenidas2doEscalon = [];
+    
+    PERMISOS_BASE.forEach(p => {
+      if (estadoActual[p.id_fb] === ST.RETENIDA) {
+        if (currentUser === ROLES.M1 && permisos[ROLES.M2][p.id_fb] === ST.RETENIDA && permisos[ROLES.M3][p.id_fb] === ST.RETENIDA) {
+          retenidas2doEscalon.push(p);
+        } else {
+          retenidasDirectas.push(p);
+        }
+      }
+    });
+
+    const prohibidas = PERMISOS_BASE.filter(p => estadoActual[p.id_fb] === ST.PROHIBIDA_LEY);
+
+    let cargoFirma = '';
+    let nombreFirmaImg = '';
+
+    if (currentUser === ROLES.M3) {
+      cargoFirma = 'PRESIDENTE DE LA REPÚBLICA';
+      nombreFirmaImg = 'firma-presidente.png';
+    } else if (currentUser === ROLES.M2) {
+      cargoFirma = 'JEFE DEL COMANDO CONJUNTO DE LAS FUERZAS ARMADAS';
+      nombreFirmaImg = 'firma-ccffaa.png';
+    } else if (currentUser === ROLES.M1) {
+      cargoFirma = 'COMANDANTE GENERAL DEL CE - VRAEM';
+      nombreFirmaImg = 'firma-cevraem.png';
+    }
+
+    const htmlContent = `
+      <div style="font-family: Arial, sans-serif; padding: 20px; color: #000;">
+        <h1 style="text-align: center; font-size: 16px; text-decoration: underline; margin-bottom: 20px;">REGISTRO AUTOMATIZADO DE REGLAS DE CONDUCTA OPERATIVA</h1>
+        <p style="font-size: 12px;"><strong>UNIDAD / COMANDO:</strong> ${currentUser}</p>
+        <p style="font-size: 12px;"><strong>FECHA DE EMISIÓN:</strong> ${new Date().toLocaleDateString()}</p>
+
+        ${liberadas.length > 0 ? `
+          <h2 style="font-size: 12px; background: #e2e8f0; padding: 4px; margin-top: 15px;">1. REGLAS LIBERADAS (AUTORIZADAS PARA USO)</h2>
+          <table style="width: 100%; border-collapse: collapse; font-size: 10px; margin-bottom: 10px;">
+            <tr><th style="border: 1px solid #000; padding: 4px; background: #f8fafc; width: 15%;">CÓDIGO</th><th style="border: 1px solid #000; padding: 4px; background: #f8fafc;">DESCRIPCIÓN</th></tr>
+            ${liberadas.map(p => `<tr><td style="border: 1px solid #000; padding: 4px;"><strong>${p.label}</strong></td><td style="border: 1px solid #000; padding: 4px;">${p.name}</td></tr>`).join('')}
+          </table>
+        ` : ''}
+
+        ${delegadas.length > 0 ? `
+          <h2 style="font-size: 12px; background: #e2e8f0; padding: 4px; margin-top: 15px;">2. REGLAS DELEGADAS AL ESCALÓN SUBORDINADO</h2>
+          <table style="width: 100%; border-collapse: collapse; font-size: 10px; margin-bottom: 10px;">
+            <tr><th style="border: 1px solid #000; padding: 4px; background: #f8fafc; width: 15%;">CÓDIGO</th><th style="border: 1px solid #000; padding: 4px; background: #f8fafc;">DESCRIPCIÓN</th></tr>
+            ${delegadas.map(p => `<tr><td style="border: 1px solid #000; padding: 4px;"><strong>${p.label}</strong></td><td style="border: 1px solid #000; padding: 4px;">${p.name}</td></tr>`).join('')}
+          </table>
+        ` : ''}
+
+        ${retenidasDirectas.length > 0 ? `
+          <h2 style="font-size: 12px; background: #e2e8f0; padding: 4px; margin-top: 15px;">3. REGLAS RETENIDAS (REQUIEREN AUTORIZACIÓN)</h2>
+          <table style="width: 100%; border-collapse: collapse; font-size: 10px; margin-bottom: 10px;">
+            <tr><th style="border: 1px solid #000; padding: 4px; background: #f8fafc; width: 15%;">CÓDIGO</th><th style="border: 1px solid #000; padding: 4px; background: #f8fafc;">DESCRIPCIÓN</th></tr>
+            ${retenidasDirectas.map(p => `<tr><td style="border: 1px solid #000; padding: 4px;"><strong>${p.label}</strong></td><td style="border: 1px solid #000; padding: 4px;">${p.name}</td></tr>`).join('')}
+          </table>
+        ` : ''}
+
+        ${retenidas2doEscalon.length > 0 ? `
+          <h2 style="font-size: 12px; background: #e2e8f0; padding: 4px; margin-top: 15px;">4. REGLAS RETENIDAS POR EL 2DO ESCALÓN SUPERIOR</h2>
+          <table style="width: 100%; border-collapse: collapse; font-size: 10px; margin-bottom: 10px;">
+            <tr><th style="border: 1px solid #000; padding: 4px; background: #f8fafc; width: 15%;">CÓDIGO</th><th style="border: 1px solid #000; padding: 4px; background: #f8fafc;">DESCRIPCIÓN</th></tr>
+            ${retenidas2doEscalon.map(p => `<tr><td style="border: 1px solid #000; padding: 4px;"><strong>${p.label}</strong></td><td style="border: 1px solid #000; padding: 4px;">${p.name}</td></tr>`).join('')}
+          </table>
+        ` : ''}
+
+        ${prohibidas.length > 0 ? `
+          <h2 style="font-size: 12px; background: #e2e8f0; padding: 4px; margin-top: 15px;">5. REGLAS PROHIBIDAS POR LEY (NO AUTORIZADAS)</h2>
+          <table style="width: 100%; border-collapse: collapse; font-size: 10px; margin-bottom: 10px;">
+            <tr><th style="border: 1px solid #000; padding: 4px; background: #f8fafc; width: 15%;">CÓDIGO</th><th style="border: 1px solid #000; padding: 4px; background: #f8fafc;">DESCRIPCIÓN</th></tr>
+            ${prohibidas.map(p => `<tr><td style="border: 1px solid #000; padding: 4px;"><strong>${p.label}</strong></td><td style="border: 1px solid #000; padding: 4px;">${p.name}</td></tr>`).join('')}
+          </table>
+        ` : ''}
+
+        <div style="margin-top: 50px; text-align: center;">
+          <img src="${window.location.origin}/${nombreFirmaImg}" style="max-width: 150px; max-height: 80px; display: block; margin: 0 auto 5px auto;" onerror="this.style.display='none'" />
+          <p style="margin: 0; font-weight: bold; font-size: 11px; border-top: 1px solid #000; display: inline-block; padding-top: 5px;">${cargoFirma}</p>
+        </div>
+      </div>
+    `;
+
+    const element = document.createElement('div');
+    element.innerHTML = htmlContent;
+
+    const opt = {
+      margin:       10,
+      filename:     `REN_${currentUser.replace(/ /g, '_')}.pdf`,
+      image:        { type: 'jpeg', quality: 0.98 },
+      html2canvas:  { scale: 2, useCORS: true },
+      jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
+    };
+
+    html2pdf().from(element).set(opt).save().then(() => {
+      setIsDownloading(false);
+    });
   };
 
   const resetFirebaseDB = () => {
-    if(window.confirm("¿Seguro que deseas limpiar la base de datos de toda la nube?")) {
-      set(ref(db, 'vraem_permisos'), {
-        [ROLES.M3]: PERMISOS_BASE.reduce((acc, p) => ({ ...acc, [p.id]: true }), {}),
-        [ROLES.M2]: PERMISOS_BASE.reduce((acc, p) => ({ ...acc, [p.id]: false }), {}),
-        [ROLES.M1]: PERMISOS_BASE.reduce((acc, p) => ({ ...acc, [p.id]: false }), {})
-      });
-      set(ref(db, 'vraem_requests'), []);
-      set(ref(db, 'vraem_autoModeActive'), { [ROLES.M3]: false, [ROLES.M2]: false });
-      set(ref(db, 'vraem_autoConfig'), { [ROLES.M3]: initialConfigPerRole, [ROLES.M2]: initialConfigPerRole });
-      alert("Base de datos reiniciada con éxito.");
+    if(window.confirm("¿Limpiar base de datos completa y reiniciar sistema?")) {
+      set(ref(db, 'vraem_permisos_v3'), initPermisos());
+      set(ref(db, 'vraem_requests_v3'), []);
+      set(ref(db, 'vraem_autoModeActive_v3'), { [ROLES.M3]: false, [ROLES.M2]: false });
+      set(ref(db, 'vraem_autoConfig_v3'), { [ROLES.M3]: initialConfigPerRole, [ROLES.M2]: initialConfigPerRole });
     }
   };
 
+  // --- PANTALLA DE CARGA ---
   if (!isReady) {
     return (
-      <div className="login-screen" style={{display: 'flex', justifyContent: 'center', alignItems: 'center'}}>
-        <h2>Conectando al Servidor Militar (Firebase)... 📡</h2>
+      <div style={{ minHeight: '100vh', display: 'flex', justifyContent: 'center', alignItems: 'center', background: '#020617', color: '#38bdf8', fontFamily: 'system-ui' }}>
+        <h2>Estableciendo conexión segura... 📡</h2>
       </div>
     );
   }
 
   const misNotificaciones = requests.filter(r => r.to === currentUser);
 
+  // --- NUEVA PANTALLA DE INICIO (ESTILO DASHBOARD MILITAR) ---
   if (!currentUser) {
     return (
-      <div className="login-screen" style={{overflowY: 'auto'}}>
-        <h1 style={{marginBottom: '30px', textAlign: 'center'}}>Sistema de Reglas de Enfrentamiento</h1>
-        {Object.values(ROLES).map(rol => (
-          <button key={rol} onClick={() => setCurrentUser(rol)} className="login-btn">
-            Ingresar como {rol}
-          </button>
-        ))}
-        <button onClick={resetFirebaseDB} style={{marginTop: '50px', background: 'transparent', color: '#666', border: '1px solid #666', padding: '5px 10px', cursor: 'pointer'}}>
-          Reiniciar Servidor Global
-        </button>
+      <div style={{
+        minHeight: '100vh',
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center',
+        background: 'linear-gradient(135deg, #0f172a 0%, #020617 100%)',
+        fontFamily: 'system-ui, -apple-system, sans-serif'
+      }}>
+        <div style={{
+          background: 'rgba(30, 41, 59, 0.7)',
+          backdropFilter: 'blur(10px)',
+          padding: '40px 50px',
+          borderRadius: '16px',
+          border: '1px solid rgba(255,255,255,0.1)',
+          boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)',
+          textAlign: 'center',
+          maxWidth: '450px',
+          width: '90%'
+        }}>
+          <img src="logo.png" alt="Escudo Militar" style={{ width: '120px', marginBottom: '20px', filter: 'drop-shadow(0 0 10px rgba(255,255,255,0.2))' }} />
+          
+          <h1 style={{ color: '#f8fafc', fontSize: '22px', margin: '0 0 10px 0', letterSpacing: '1px' }}>
+            SISTEMA AUTOMATIZADO
+          </h1>
+          <h2 style={{ color: '#38bdf8', fontSize: '14px', margin: '0 0 35px 0', fontWeight: '500', letterSpacing: '2px' }}>
+            REGLAS DE ENFRENTAMIENTO (ROE)
+          </h2>
+          
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+            {Object.values(ROLES).map(rol => (
+              <button 
+                key={rol} 
+                onClick={() => setCurrentUser(rol)} 
+                style={{
+                  background: 'linear-gradient(to right, #1e293b, #334155)',
+                  color: '#f8fafc',
+                  border: '1px solid #475569',
+                  padding: '16px 20px',
+                  borderRadius: '8px',
+                  fontSize: '14px',
+                  fontWeight: 'bold',
+                  cursor: 'pointer',
+                  transition: 'all 0.3s ease',
+                  textTransform: 'uppercase',
+                  letterSpacing: '1px',
+                  boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}
+                onMouseOver={(e) => { e.currentTarget.style.borderColor = '#38bdf8'; e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 10px 15px -3px rgba(0, 0, 0, 0.2)'; }}
+                onMouseOut={(e) => { e.currentTarget.style.borderColor = '#475569'; e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 4px 6px -1px rgba(0, 0, 0, 0.1)'; }}
+              >
+                <span style={{color: '#38bdf8', marginRight: '10px'}}>►</span> Ingresar como {rol}
+              </button>
+            ))}
+          </div>
+
+          <div style={{ marginTop: '40px', borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '20px' }}>
+            <button 
+              onClick={resetFirebaseDB} 
+              style={{
+                background: 'transparent', 
+                color: '#64748b', 
+                border: '1px solid #334155', 
+                padding: '8px 15px', 
+                borderRadius: '4px',
+                fontSize: '11px',
+                cursor: 'pointer',
+                transition: 'all 0.2s ease',
+                textTransform: 'uppercase',
+                letterSpacing: '0.5px'
+              }}
+              onMouseOver={(e) => { e.currentTarget.style.color = '#ef4444'; e.currentTarget.style.borderColor = '#ef4444'; }}
+              onMouseOut={(e) => { e.currentTarget.style.color = '#64748b'; e.currentTarget.style.borderColor = '#334155'; }}
+            >
+              ⚠ Limpiar Base de Datos
+            </button>
+            <p style={{ color: '#475569', fontSize: '10px', marginTop: '15px', letterSpacing: '1px' }}>
+              MÓDULO DE SEGURIDAD ESTRICTA • V2.0
+            </p>
+          </div>
+        </div>
       </div>
     );
   }
 
+  // --- RENDER DEL DASHBOARD PRINCIPAL ---
   return (
     <div className="app-layout">
+      {/* INYECCIÓN DE ESTILOS CSS REQUERIDOS */}
+      <style>{`
+        .box-status { width: 90px; height: 35px; border-radius: 4px; border: 2px solid rgba(0,0,0,0.1); transition: all 0.3s; cursor: pointer; margin-bottom: 5px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .box-green { background: #22c55e; }
+        .box-yellow { background: #eab308; }
+        .box-red { background: #ef4444; }
+        .box-dark-green { background: #166534; cursor: not-allowed; }
+        .box-dark-red { background: #7f1d1d; cursor: not-allowed; }
+        
+        .txt-status { font-size: 11px; font-weight: bold; width: 100%; text-align: center; color: #475569; }
+        
+        @keyframes blink-border { 0% { border-color: #3b82f6; box-shadow: 0 0 10px #3b82f6; } 50% { border-color: transparent; box-shadow: none; } 100% { border-color: #3b82f6; box-shadow: 0 0 10px #3b82f6; } }
+        .flash-active { animation: blink-border 1.5s infinite; border: 2px solid #3b82f6; }
+      `}</style>
+
       {/* SIDEBAR */}
       <div className="sidebar" style={{width: '280px'}}>
         <div style={{textAlign: 'center', marginBottom: '20px'}}>
-          <img 
-            src="logo.png" 
-            alt="Escudo" 
-            style={{width: '200px', height: 'auto', margin: '0 auto'}} 
-          />
+          <img src="logo.png" alt="Escudo" style={{width: '180px', margin: '0 auto'}} />
         </div>
-
-        <h3 style={{fontSize: '18px', marginBottom: '20px', borderBottom: '1px solid #475569', paddingBottom: '10px'}}>{currentUser}</h3>
+        <h3 style={{fontSize: '16px', marginBottom: '20px', borderBottom: '1px solid #475569', paddingBottom: '10px'}}>{currentUser}</h3>
         
         {currentUser !== ROLES.M1 && (
           <div className="panel-auto" style={{background: '#0f172a'}}>
-            <h4 style={{margin: '0 0 15px 0', color: '#94a3b8', fontSize: '12px', textTransform: 'uppercase'}}>Control de Autorización</h4>
-            
-            <button 
-              onClick={() => setAutoModeActive(prev => ({ ...prev, [currentUser]: true }))}
-              style={{width: '100%', padding: '10px', marginBottom: '5px', background: autoModeActive[currentUser] ? '#22c55e' : '#334155', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold'}}
-            >
+            <h4 style={{margin: '0 0 15px 0', color: '#94a3b8', fontSize: '12px'}}>Control de Autorización</h4>
+            <button onClick={activarAutoMode} style={{width: '100%', padding: '10px', marginBottom: '5px', background: autoModeActive[currentUser] ? '#22c55e' : '#334155', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold'}}>
               MODO ACTIVO
             </button>
-            <button 
-              onClick={() => setAutoModeActive(prev => ({ ...prev, [currentUser]: false }))}
-              style={{width: '100%', padding: '10px', background: !autoModeActive[currentUser] ? '#ef4444' : '#334155', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold'}}
-            >
+            <button onClick={desactivarAutoMode} style={{width: '100%', padding: '10px', background: !autoModeActive[currentUser] ? '#ef4444' : '#334155', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold'}}>
               MODO INACTIVO
             </button>
           </div>
         )}
 
-        <button style={{background: '#38bdf8', color: '#0f172a', border: 'none', padding: '10px', width: '100%', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold', marginBottom: '20px'}}>
-          DESCARGAR REN
+        <button onClick={descargarDocumento} disabled={isDownloading} style={{background: isDownloading ? '#94a3b8' : '#38bdf8', color: '#0f172a', border: 'none', padding: '10px', width: '100%', borderRadius: '4px', cursor: isDownloading ? 'not-allowed' : 'pointer', fontWeight: 'bold', marginBottom: '20px'}}>
+          {isDownloading ? 'GENERANDO PDF...' : 'DESCARGAR DOCUMENTO (PDF)'}
         </button>
 
         {currentUser !== ROLES.M1 && (
-          <button onClick={() => setShowConfig(true)} className="btn-config">
-            ⚙️ Configurar Reglas (Auto)
+          <button onClick={() => setShowConfig(true)} className="btn-config" style={{background: '#475569', color:'white', border:'none', padding:'10px', width:'100%', borderRadius:'4px', marginBottom:'20px'}}>
+            ⚙️ Configurar Reglas
           </button>
         )}
         
-        <button onClick={() => setCurrentUser(null)} className="btn-logout" style={{marginTop: 'auto'}}>⬅ Cerrar Sesión</button>
+        <button onClick={() => setCurrentUser(null)} className="btn-logout" style={{marginTop: 'auto', background: 'transparent', color: '#ef4444', border:'1px solid #ef4444', padding:'10px', width:'100%', cursor:'pointer'}}>⬅ Cerrar Sesión</button>
       </div>
 
       {/* MAIN CONTENT */}
-      <div className="main-content" style={{maxHeight: '100vh', overflowY: 'auto'}}>
-        <div className="bell-container">
-          {currentUser !== ROLES.M1 && (
-            <button onClick={() => setShowNotificaciones(!showNotificaciones)} className="bell-btn" style={{position: 'relative'}}>
-              🔔
-              {misNotificaciones.length > 0 && <span className="badge" style={{animation: 'pulse 2s infinite'}}>{misNotificaciones.length}</span>}
-            </button>
-          )}
-          
-          {showNotificaciones && currentUser !== ROLES.M1 && (
-            <div className="notificaciones-box">
-              <h4 style={{marginTop: 0, borderBottom: '1px solid #ccc', paddingBottom: '10px'}}>Solicitudes Pendientes</h4>
-              {misNotificaciones.length === 0 ? <p>No hay solicitudes.</p> : null}
+      <div className="main-content" style={{maxHeight: '100vh', overflowY: 'auto', background: '#f1f5f9', padding: '20px'}}>
+        
+        <div style={{background: 'white', padding: '15px', borderRadius: '8px', marginBottom: '20px', boxShadow: '0 2px 5px rgba(0,0,0,0.05)'}}>
+          <h3 style={{margin: '0 0 10px 0', display: 'flex', alignItems: 'center'}}>
+            🔔 Solicitudes Pendientes 
+            {misNotificaciones.length > 0 && <span style={{background: '#ef4444', color: 'white', borderRadius: '50%', padding: '2px 8px', fontSize: '12px', marginLeft: '10px', animation: 'blink-border 1s infinite'}}>{misNotificaciones.length}</span>}
+          </h3>
+          {misNotificaciones.length === 0 ? <p style={{fontSize: '13px', color: '#64748b', margin: 0}}>No hay solicitudes en cola.</p> : (
+            <div style={{display: 'flex', gap: '10px', overflowX: 'auto', paddingBottom: '10px'}}>
               {misNotificaciones.map(req => (
-                <div key={req.id} className="noti-item">
-                  <p style={{margin: '0 0 5px 0', fontSize: '13px'}}><strong>{req.from}</strong> solicita:</p>
-                  <p style={{margin: '0 0 5px 0', fontSize: '14px', fontWeight: 'bold'}}>{req.permissionId.replace('_', '.')}</p>
-                  <p style={{margin: '0 0 10px 0', fontSize: '12px', color: '#2563eb'}}>Motivo: {req.reason}</p>
+                <div key={req.id} style={{minWidth: '250px', background: '#f8fafc', border: '1px solid #cbd5e1', padding: '10px', borderRadius: '6px'}}>
+                  <p style={{margin: '0 0 5px 0', fontSize: '12px'}}><strong>{req.from}</strong> solicita:</p>
+                  <p style={{margin: '0 0 5px 0', fontSize: '14px', fontWeight: 'bold', color: '#0f172a'}}>{req.label}</p>
+                  <p style={{margin: '0 0 10px 0', fontSize: '11px', color: '#2563eb'}}>Motivo: {req.reason}</p>
                   <div style={{display: 'flex', gap: '5px'}}>
-                    <button onClick={() => resolverSolicitud(req.id, true)} className="btn-green">Permitir</button>
-                    <button onClick={() => resolverSolicitud(req.id, false)} className="btn-red" style={{marginLeft: 0}}>Denegar</button>
+                    <button onClick={() => resolverSolicitud(req.id, true)} style={{flex: 1, background: '#22c55e', color: 'white', border: 'none', padding: '5px', borderRadius: '4px', cursor: 'pointer', fontSize:'12px'}}>Aprobar</button>
+                    <button onClick={() => resolverSolicitud(req.id, false)} style={{flex: 1, background: '#ef4444', color: 'white', border: 'none', padding: '5px', borderRadius: '4px', cursor: 'pointer', fontSize:'12px'}}>Denegar</button>
                   </div>
                 </div>
               ))}
@@ -326,28 +523,44 @@ export default function App() {
           )}
         </div>
 
-        <div className="permisos-card" style={{maxWidth: '1200px'}}>
-          <h2 style={{borderBottom: '1px solid #ccc', paddingBottom: '10px', marginTop: 0}}>Reglas de Enfrentamiento</h2>
+        <div className="permisos-card" style={{background: 'white', padding: '20px', borderRadius: '8px'}}>
+          <h2 style={{borderBottom: '2px solid #e2e8f0', paddingBottom: '10px', margin: '0 0 20px 0'}}>Matriz de Reglas de Enfrentamiento</h2>
           
-          <div className="grid-permisos" style={{gridTemplateColumns: '1fr', gap: '10px'}}>
+          <div style={{display: 'grid', gridTemplateColumns: '1fr', gap: '12px'}}>
             {PERMISOS_BASE.map(p => {
-              const tienePermiso = permisos[currentUser][p.id];
+              const estado = permisos[currentUser][p.id_fb];
+              const isPending = requests.some(r => r.to === currentUser && r.permissionId === p.id_fb);
+
+              let boxClass = 'box-red';
+              let textStatus = 'SOLICITAR';
+              
+              if (estado === ST.LIBERADA) { boxClass = 'box-green'; textStatus = 'DELEGAR (Activo)'; }
+              else if (estado === ST.DELEGADA) { boxClass = 'box-yellow'; textStatus = 'REVOCAR'; }
+              else if (estado === ST.LIBERADA_LEY) { boxClass = 'box-dark-green'; textStatus = 'LIBRE POR LEY'; }
+              else if (estado === ST.PROHIBIDA_LEY) { boxClass = 'box-dark-red'; textStatus = 'PROHIBIDO POR LEY'; }
+
+              const handleBoxClick = () => {
+                if (estado === ST.LIBERADA_LEY || estado === ST.PROHIBIDA_LEY) return; 
+                if (estado === ST.RETENIDA && currentUser !== ROLES.M3) {
+                  setSolicitarModal({ open: true, permissionId: p.id_fb, label: p.label, reason: RAZONES[0] });
+                } else if (estado === ST.DELEGADA) {
+                  if(window.confirm(`¿Revocar el permiso ${p.label} a los subordinados?`)) revocarPermiso(p.id_fb);
+                }
+              };
+
               return (
-                <div key={p.id} className="permiso-row" style={{background: '#f8fafc', padding: '15px', borderRadius: '6px', border: '1px solid #e2e8f0'}}>
+                <div key={p.id_fb} style={{background: '#f8fafc', padding: '15px', borderRadius: '6px', border: '1px solid #e2e8f0', display: 'flex'}}>
                   <div style={{flex: 1, paddingRight: '20px'}}>
-                    {/* AQUI MOSTRAMOS EL LABEL ORIGINAL (E-1.1) PARA QUE EL CLIENTE LO VEA BIEN */}
-                    <strong style={{color: '#0f172a', fontSize: '16px', display: 'block', marginBottom: '5px'}}>{p.label}</strong>
-                    <span style={{fontSize: '13px', color: '#475569', lineHeight: '1.5'}}>{p.name}</span>
+                    <strong style={{color: '#0f172a', fontSize: '15px', display: 'block', marginBottom: '4px'}}>{p.label}</strong>
+                    <span style={{fontSize: '12px', color: '#475569', lineHeight: '1.4'}}>{p.name}</span>
                   </div>
-                  <div style={{display: 'flex', flexDirection: 'column', alignItems: 'center', minWidth: '100px'}}>
+                  <div style={{display: 'flex', flexDirection: 'column', alignItems: 'center', minWidth: '110px', justifyContent: 'center'}}>
                     <div 
-                      onClick={() => !tienePermiso && currentUser !== ROLES.M3 && setSolicitarModal({ open: true, permissionId: p.id, reason: RAZONES[0] })}
-                      className={`box-status ${tienePermiso ? 'box-green' : 'box-red'}`}
-                      style={{width: '90px', height: '35px', transition: 'all 0.2s', marginBottom: '5px'}}
+                      onClick={handleBoxClick}
+                      className={`box-status ${boxClass} ${isPending ? 'flash-active' : ''}`}
+                      title={estado === ST.DELEGADA ? 'Clic para Revocar' : estado === ST.RETENIDA ? 'Clic para Solicitar' : ''}
                     ></div>
-                    <span className="txt-status" style={{width: '100%', textAlign: 'center'}}>
-                      {!tienePermiso && currentUser !== ROLES.M3 ? 'SOLICITAR' : tienePermiso ? 'RETENER' : ''}
-                    </span>
+                    <span className="txt-status">{textStatus}</span>
                   </div>
                 </div>
               );
@@ -356,79 +569,59 @@ export default function App() {
         </div>
       </div>
 
-      {/* MODAL PARA SELECCIONAR RAZÓN DE LA SOLICITUD */}
       {solicitarModal.open && (
-        <div className="modal-overlay">
-          <div className="modal-content">
-            {/* Mostramos el texto con el punto visualmente */}
-            <h3 style={{marginTop: 0}}>Solicitar {solicitarModal.permissionId.replace('_', '.')}</h3>
-            <p style={{fontSize: '14px', color: '#666'}}>Seleccione el motivo de la solicitud (requerido para evaluación automática o manual):</p>
-            <select value={solicitarModal.reason} onChange={(e) => setSolicitarModal({...solicitarModal, reason: e.target.value})} style={{width: '100%', padding: '10px', marginTop: '10px', marginBottom: '20px'}}>
+        <div className="modal-overlay" style={{position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 100}}>
+          <div className="modal-content" style={{background: 'white', padding: '25px', borderRadius: '8px', width: '400px'}}>
+            <h3 style={{marginTop: 0}}>Solicitar {solicitarModal.label}</h3>
+            <p style={{fontSize: '13px', color: '#666'}}>Indique el motivo de la operación:</p>
+            <select value={solicitarModal.reason} onChange={(e) => setSolicitarModal({...solicitarModal, reason: e.target.value})} style={{width: '100%', padding: '10px', margin: '10px 0 20px 0', border: '1px solid #ccc', borderRadius: '4px'}}>
               {RAZONES.map(r => <option key={r} value={r}>{r}</option>)}
             </select>
-            <div className="modal-actions">
-              <button onClick={() => setSolicitarModal({ open: false, permissionId: null, reason: RAZONES[0]})} className="btn-cancel">Cancelar</button>
-              <button onClick={enviarSolicitudConMotivo} className="btn-submit">Enviar Solicitud</button>
+            <div style={{display: 'flex', justifyContent: 'flex-end', gap: '10px'}}>
+              <button onClick={() => setSolicitarModal({ open: false, permissionId: null, label: '', reason: RAZONES[0]})} style={{padding: '10px 15px', border: 'none', background: '#e2e8f0', cursor: 'pointer', borderRadius: '4px'}}>Cancelar</button>
+              <button onClick={enviarSolicitudConMotivo} style={{padding: '10px 15px', border: 'none', background: '#3b82f6', color: 'white', cursor: 'pointer', borderRadius: '4px'}}>Enviar</button>
             </div>
           </div>
         </div>
       )}
 
-      {/* MODAL DE CONFIGURACIÓN AUTOMÁTICA DETALLADA POR RAZONES */}
       {showConfig && currentUser !== ROLES.M1 && (
-        <div className="modal-overlay">
-          <div className="modal-content" style={{width: '700px', maxHeight: '90vh', overflowY: 'auto'}}>
-            <h2 style={{marginTop: 0, position: 'sticky', top: 0, background: 'white', paddingBottom: '15px', borderBottom: '2px solid #eee', zIndex: 10}}>
-              Automatización de Reglas de Enfrentamiento
-            </h2>
-            <p style={{fontSize: '13px', color: '#666', marginBottom: '20px'}}>
-              Configura qué razones otorgan el permiso o lo deniegan automáticamente. Lo que no marques pasará a revisión manual en tu campanita.
-            </p>
+        <div className="modal-overlay" style={{position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 100}}>
+          <div className="modal-content" style={{background: 'white', padding: '0', borderRadius: '8px', width: '750px', maxHeight: '90vh', display: 'flex', flexDirection: 'column'}}>
+            <div style={{padding: '20px', borderBottom: '1px solid #e2e8f0', background: '#f8fafc', borderRadius: '8px 8px 0 0'}}>
+              <h2 style={{margin: 0, fontSize: '18px'}}>Configuración Obligatoria: Modo Automático</h2>
+              <p style={{margin: '5px 0 0 0', fontSize: '12px', color: '#64748b'}}>Selecciona qué motivos desencadenan una respuesta automática para cada Regla.</p>
+            </div>
             
-            <div style={{display: 'flex', flexDirection: 'column', gap: '15px'}}>
-              {PERMISOS_BASE.map(p => (
-                <div key={p.id} style={{background: '#f8fafc', padding: '15px', borderRadius: '8px', border: '1px solid #e2e8f0'}}>
-                  <h4 style={{margin: '0 0 10px 0', color: '#1e293b', borderBottom: '1px solid #cbd5e1', paddingBottom: '5px'}}>{p.label}</h4>
-                  
+            <div style={{padding: '20px', overflowY: 'auto', flex: 1}}>
+              {PERMISOS_BASE.filter(p => p.type !== ST.LIBERADA_LEY && p.type !== ST.PROHIBIDA_LEY).map(p => (
+                <div key={p.id_fb} style={{background: '#fff', padding: '15px', border: '1px solid #e2e8f0', marginBottom: '15px', borderRadius: '6px', boxShadow: '0 1px 3px rgba(0,0,0,0.05)'}}>
+                  <h4 style={{margin: '0 0 10px 0', fontSize: '14px', color: '#0f172a'}}>{p.label}</h4>
                   <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px'}}>
-                    {/* COLUMNA APROBAR */}
                     <div>
-                      <span style={{color: '#16a34a', fontSize: '13px', fontWeight: 'bold'}}>✅ Liberar si se solicita para:</span>
-                      <div style={{display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '8px'}}>
-                        {RAZONES.map(razon => (
-                          <label key={`apr-${p.id}-${razon}`} style={{fontSize: '13px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px'}}>
-                            <input 
-                              type="checkbox" 
-                              checked={autoConfig[currentUser][p.id].aprobar.includes(razon)}
-                              onChange={(e) => handleConfigChange(p.id, 'aprobar', razon, e.target.checked)}
-                            /> {razon}
-                          </label>
-                        ))}
-                      </div>
+                      <span style={{color: '#16a34a', fontSize: '12px', fontWeight: 'bold'}}>✅ Liberar si piden para:</span>
+                      {RAZONES.map(razon => (
+                        <label key={`apr-${p.id_fb}-${razon}`} style={{display: 'flex', alignItems: 'center', gap: '5px', fontSize: '12px', marginTop: '5px'}}>
+                          <input type="checkbox" checked={autoConfig[currentUser][p.id_fb].aprobar.includes(razon)} onChange={(e) => handleConfigChange(p.id_fb, 'aprobar', razon, e.target.checked)} /> {razon}
+                        </label>
+                      ))}
                     </div>
-
-                    {/* COLUMNA RECHAZAR */}
                     <div>
-                      <span style={{color: '#dc2626', fontSize: '13px', fontWeight: 'bold'}}>❌ Denegar si se solicita para:</span>
-                      <div style={{display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '8px'}}>
-                        {RAZONES.map(razon => (
-                          <label key={`rec-${p.id}-${razon}`} style={{fontSize: '13px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px'}}>
-                            <input 
-                              type="checkbox" 
-                              checked={autoConfig[currentUser][p.id].rechazar.includes(razon)}
-                              onChange={(e) => handleConfigChange(p.id, 'rechazar', razon, e.target.checked)}
-                            /> {razon}
-                          </label>
-                        ))}
-                      </div>
+                      <span style={{color: '#dc2626', fontSize: '12px', fontWeight: 'bold'}}>❌ Denegar si piden para:</span>
+                      {RAZONES.map(razon => (
+                        <label key={`rec-${p.id_fb}-${razon}`} style={{display: 'flex', alignItems: 'center', gap: '5px', fontSize: '12px', marginTop: '5px'}}>
+                          <input type="checkbox" checked={autoConfig[currentUser][p.id_fb].rechazar.includes(razon)} onChange={(e) => handleConfigChange(p.id_fb, 'rechazar', razon, e.target.checked)} /> {razon}
+                        </label>
+                      ))}
                     </div>
                   </div>
                 </div>
               ))}
             </div>
 
-            <div className="modal-actions" style={{position: 'sticky', bottom: 0, background: 'white', paddingTop: '15px', borderTop: '2px solid #eee', marginTop: '20px'}}>
-              <button onClick={() => setShowConfig(false)} className="btn-submit" style={{width: '100%', padding: '12px', fontSize: '16px'}}>Guardar Configuración</button>
+            <div style={{padding: '15px 20px', borderTop: '1px solid #e2e8f0', background: '#f8fafc', borderRadius: '0 0 8px 8px', display: 'flex', justifyContent: 'flex-end', gap: '10px'}}>
+               <button onClick={() => setShowConfig(false)} style={{padding: '10px 20px', background: '#e2e8f0', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold'}}>Cancelar</button>
+               <button onClick={guardarConfiguracion} style={{padding: '10px 20px', background: '#3b82f6', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold'}}>Guardar y Activar Auto</button>
             </div>
           </div>
         </div>
