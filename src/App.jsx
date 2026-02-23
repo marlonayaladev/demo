@@ -48,7 +48,7 @@ function useFirebaseState(key, initialValue) {
 const ROLES = { M3: 'JEFE DEL CCFFAA', M2: 'CG - CEVRAEM', M1: 'CG - 31 BRIG INF' };
 const RAZONES = ['Situación de Emergencia', 'Apoyo Táctico', 'Mantenimiento']; 
 
-// ESTADOS ÚNICOS: SOLO ROJO, VERDE Y AMARILLO (Visualmente)
+// ESTADOS ÚNICOS: SOLO ROJO, VERDE Y AMARILLO
 const ST = {
   LIBERADA: 'GREEN',
   DELEGADA: 'YELLOW',
@@ -132,10 +132,10 @@ const RAW_PERMISOS = [
   { id: "E-13.5", name: "Realizar ataques indiscriminados", type: ST.PROHIBIDA_LEY }
 ];
 
-// ELIMINAMOS PUNTOS Y ESPACIOS PARA QUE FIREBASE NO TIRE PANTALLA BLANCA
+// IDs FORMATEADOS (Sin puntos ni espacios)
 const PERMISOS_BASE = RAW_PERMISOS.map(p => ({ ...p, id_fb: p.id.replace(/\./g, '_').replace(/\s/g, ''), label: p.id }));
 
-// MATRIZ INICIAL EXACTA SACADA DEL EXCEL (Carga por defecto al resetear)
+// MATRIZ INICIAL EXACTA SACADA DEL EXCEL
 const initPermisos = () => {
   return {
     "JEFE DEL CCFFAA": {
@@ -216,26 +216,29 @@ export default function App() {
   const [isDownloading, setIsDownloading] = useState(false);
   
   // Usamos una nueva llave de Firebase para que no cruce con lo viejo
-  const [permisos, setPermisos, load1] = useFirebaseState('vraem_permisos_vfinal', initPermisos());
-  const [requests, setRequests, load2] = useFirebaseState('vraem_requests_vfinal', []);
-  const [autoModeActive, setAutoModeActive, load3] = useFirebaseState('vraem_autoModeActive_vfinal', { [ROLES.M3]: false, [ROLES.M2]: false });
-  const [autoConfig, setAutoConfig, load4] = useFirebaseState('vraem_autoConfig_vfinal', { [ROLES.M3]: initialConfigPerRole, [ROLES.M2]: initialConfigPerRole });
+  const [permisos, setPermisos, load1] = useFirebaseState('vraem_permisos_vfinal2', initPermisos());
+  const [requests, setRequests, load2] = useFirebaseState('vraem_requests_vfinal2', []);
+  const [autoModeActive, setAutoModeActive, load3] = useFirebaseState('vraem_autoModeActive_vfinal2', { [ROLES.M3]: false, [ROLES.M2]: false });
+  const [autoConfig, setAutoConfig, load4] = useFirebaseState('vraem_autoConfig_vfinal2', { [ROLES.M3]: initialConfigPerRole, [ROLES.M2]: initialConfigPerRole });
 
   const [solicitarModal, setSolicitarModal] = useState({ open: false, permissionId: null, label: '', reason: RAZONES[0] });
   const [showConfig, setShowConfig] = useState(false);
 
   const isReady = load1 && load2 && load3 && load4;
 
+  // BLINDAJE SENIOR: Optional chaining (?.) para evitar pantallas blancas
   const handleConfigChange = (pId, accion, razon, isChecked) => {
     setAutoConfig(prev => {
       const newState = { ...prev };
-      const c = { ...newState[currentUser][pId] };
+      if (!newState[currentUser]) newState[currentUser] = {};
+      const c = { ...(newState[currentUser]?.[pId] || { aprobar: [], rechazar: [] }) };
+      
       if (isChecked) {
-        c[accion] = [...c[accion], razon];
+        c[accion] = [...(c[accion] || []), razon];
         const otra = accion === 'aprobar' ? 'rechazar' : 'aprobar';
-        c[otra] = c[otra].filter(r => r !== razon);
+        c[otra] = (c[otra] || []).filter(r => r !== razon);
       } else {
-        c[accion] = c[accion].filter(r => r !== razon);
+        c[accion] = (c[accion] || []).filter(r => r !== razon);
       }
       newState[currentUser][pId] = c;
       return newState;
@@ -261,9 +264,10 @@ export default function App() {
     const { permissionId, label, reason } = solicitarModal;
     
     if (autoModeActive[superior]) {
-      const cSuperior = autoConfig[superior][permissionId];
-      if (cSuperior.aprobar.includes(reason)) {
-        if (superior !== ROLES.M3 && permisos[superior][permissionId] === ST.RETENIDA) {
+      // BLINDAJE SENIOR
+      const cSuperior = autoConfig[superior]?.[permissionId] || { aprobar: [], rechazar: [] };
+      if ((cSuperior.aprobar || []).includes(reason)) {
+        if (superior !== ROLES.M3 && permisos[superior]?.[permissionId] === ST.RETENIDA) {
           alert(`El ${superior} configuró auto-aprobación, pero él no posee la regla ${label}. Pasa a revisión manual.`);
         } else {
           setPermisos(prev => {
@@ -276,7 +280,7 @@ export default function App() {
           setSolicitarModal({ open: false, permissionId: null, label: '', reason: RAZONES[0] });
           return;
         }
-      } else if (cSuperior.rechazar.includes(reason)) {
+      } else if ((cSuperior.rechazar || []).includes(reason)) {
         alert(`Denegado automáticamente por el ${superior}.`);
         setSolicitarModal({ open: false, permissionId: null, label: '', reason: RAZONES[0] });
         return;
@@ -291,7 +295,7 @@ export default function App() {
   const resolverSolicitud = (reqId, aprobar) => {
     const req = requests.find(r => r.id === reqId);
     if (aprobar) {
-      if (currentUser !== ROLES.M3 && permisos[currentUser][req.permissionId] === ST.RETENIDA) {
+      if (currentUser !== ROLES.M3 && permisos[currentUser]?.[req.permissionId] === ST.RETENIDA) {
         alert(`❌ ERROR: No tienes la regla ${req.label} en Verde o Amarillo. No puedes delegarla.`);
         return;
       }
@@ -322,9 +326,8 @@ export default function App() {
 
   const descargarDocumento = () => {
     setIsDownloading(true);
-    const estadoActual = permisos[currentUser];
+    const estadoActual = permisos[currentUser] || {};
     
-    // Al generar el PDF filtramos las Prohibidas por Ley para que tengan su propia sección
     const liberadas = PERMISOS_BASE.filter(p => estadoActual[p.id_fb] === ST.LIBERADA);
     const delegadas = PERMISOS_BASE.filter(p => estadoActual[p.id_fb] === ST.DELEGADA);
     
@@ -333,7 +336,7 @@ export default function App() {
     
     PERMISOS_BASE.forEach(p => {
       if (estadoActual[p.id_fb] === ST.RETENIDA && p.type !== ST.PROHIBIDA_LEY) {
-        if (currentUser === ROLES.M1 && permisos[ROLES.M2][p.id_fb] === ST.RETENIDA && permisos[ROLES.M3][p.id_fb] === ST.RETENIDA) {
+        if (currentUser === ROLES.M1 && permisos[ROLES.M2]?.[p.id_fb] === ST.RETENIDA && permisos[ROLES.M3]?.[p.id_fb] === ST.RETENIDA) {
           retenidas2doEscalon.push(p);
         } else {
           retenidasDirectas.push(p);
@@ -428,10 +431,11 @@ export default function App() {
 
   const resetFirebaseDB = () => {
     if(window.confirm("¿Limpiar base de datos completa y reiniciar sistema con la matriz por defecto?")) {
-      set(ref(db, 'vraem_permisos_vfinal'), initPermisos());
-      set(ref(db, 'vraem_requests_vfinal'), []);
-      set(ref(db, 'vraem_autoModeActive_vfinal'), { [ROLES.M3]: false, [ROLES.M2]: false });
-      set(ref(db, 'vraem_autoConfig_vfinal'), { [ROLES.M3]: initialConfigPerRole, [ROLES.M2]: initialConfigPerRole });
+      set(ref(db, 'vraem_permisos_vfinal2'), initPermisos());
+      set(ref(db, 'vraem_requests_vfinal2'), []);
+      set(ref(db, 'vraem_autoModeActive_vfinal2'), { [ROLES.M3]: false, [ROLES.M2]: false });
+      set(ref(db, 'vraem_autoConfig_vfinal2'), { [ROLES.M3]: initialConfigPerRole, [ROLES.M2]: initialConfigPerRole });
+      alert("Base de datos limpia y lista.");
     }
   };
 
@@ -552,7 +556,7 @@ export default function App() {
             
             <div>
               {PERMISOS_BASE.map(p => {
-                const estado = permisos[currentUser][p.id_fb];
+                const estado = permisos[currentUser]?.[p.id_fb] || ST.RETENIDA;
                 const isPending = requests.some(r => r.to === currentUser && r.permissionId === p.id_fb);
 
                 let boxClass = 'box-red';
@@ -628,29 +632,36 @@ export default function App() {
               </div>
               
               <div style={{padding: '25px', overflowY: 'auto', flex: 1, background: '#f1f5f9'}}>
-                {PERMISOS_BASE.filter(p => p.type !== ST.LIBERADA_LEY && p.type !== ST.PROHIBIDA_LEY).map(p => (
-                  <div key={p.id_fb} style={{background: '#fff', padding: '20px', border: '1px solid #e2e8f0', marginBottom: '15px', borderRadius: '8px', boxShadow: '0 1px 2px rgba(0,0,0,0.05)'}}>
-                    <h4 style={{margin: '0 0 15px 0', fontSize: '15px', color: '#0f172a', borderBottom: '1px solid #f1f5f9', paddingBottom: '10px'}}>{p.label} - {p.name.substring(0, 50)}...</h4>
-                    <div className="grid-config">
-                      <div style={{background: '#f0fdf4', padding: '15px', borderRadius: '6px', border: '1px solid #bbf7d0'}}>
-                        <span style={{color: '#16a34a', fontSize: '13px', fontWeight: 'bold', display: 'block', marginBottom: '10px'}}>✅ Liberar si piden para:</span>
-                        {RAZONES.map(razon => (
-                          <label key={`apr-${p.id_fb}-${razon}`} style={{display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', marginTop: '8px', cursor: 'pointer'}}>
-                            <input type="checkbox" checked={autoConfig[currentUser][p.id_fb].aprobar.includes(razon)} onChange={(e) => handleConfigChange(p.id_fb, 'aprobar', razon, e.target.checked)} /> {razon}
-                          </label>
-                        ))}
-                      </div>
-                      <div style={{background: '#fef2f2', padding: '15px', borderRadius: '6px', border: '1px solid #fecaca'}}>
-                        <span style={{color: '#dc2626', fontSize: '13px', fontWeight: 'bold', display: 'block', marginBottom: '10px'}}>❌ Denegar si piden para:</span>
-                        {RAZONES.map(razon => (
-                          <label key={`rec-${p.id_fb}-${razon}`} style={{display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', marginTop: '8px', cursor: 'pointer'}}>
-                            <input type="checkbox" checked={autoConfig[currentUser][p.id_fb].rechazar.includes(razon)} onChange={(e) => handleConfigChange(p.id_fb, 'rechazar', razon, e.target.checked)} /> {razon}
-                          </label>
-                        ))}
+                {PERMISOS_BASE.filter(p => p.type !== ST.LIBERADA_LEY && p.type !== ST.PROHIBIDA_LEY).map(p => {
+                  // BLINDAJE SENIOR
+                  const configRegla = autoConfig[currentUser]?.[p.id_fb] || { aprobar: [], rechazar: [] };
+                  const aprobs = configRegla.aprobar || [];
+                  const rechs = configRegla.rechazar || [];
+
+                  return (
+                    <div key={p.id_fb} style={{background: '#fff', padding: '20px', border: '1px solid #e2e8f0', marginBottom: '15px', borderRadius: '8px', boxShadow: '0 1px 2px rgba(0,0,0,0.05)'}}>
+                      <h4 style={{margin: '0 0 15px 0', fontSize: '15px', color: '#0f172a', borderBottom: '1px solid #f1f5f9', paddingBottom: '10px'}}>{p.label} - {p.name.substring(0, 50)}...</h4>
+                      <div className="grid-config">
+                        <div style={{background: '#f0fdf4', padding: '15px', borderRadius: '6px', border: '1px solid #bbf7d0'}}>
+                          <span style={{color: '#16a34a', fontSize: '13px', fontWeight: 'bold', display: 'block', marginBottom: '10px'}}>✅ Liberar si piden para:</span>
+                          {RAZONES.map(razon => (
+                            <label key={`apr-${p.id_fb}-${razon}`} style={{display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', marginTop: '8px', cursor: 'pointer'}}>
+                              <input type="checkbox" checked={aprobs.includes(razon)} onChange={(e) => handleConfigChange(p.id_fb, 'aprobar', razon, e.target.checked)} /> {razon}
+                            </label>
+                          ))}
+                        </div>
+                        <div style={{background: '#fef2f2', padding: '15px', borderRadius: '6px', border: '1px solid #fecaca'}}>
+                          <span style={{color: '#dc2626', fontSize: '13px', fontWeight: 'bold', display: 'block', marginBottom: '10px'}}>❌ Denegar si piden para:</span>
+                          {RAZONES.map(razon => (
+                            <label key={`rec-${p.id_fb}-${razon}`} style={{display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', marginTop: '8px', cursor: 'pointer'}}>
+                              <input type="checkbox" checked={rechs.includes(razon)} onChange={(e) => handleConfigChange(p.id_fb, 'rechazar', razon, e.target.checked)} /> {razon}
+                            </label>
+                          ))}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))}
+                  )
+                })}
               </div>
 
               <div style={{padding: '20px 25px', borderTop: '1px solid #e2e8f0', background: '#f8fafc', display: 'flex', justifyContent: 'flex-end', gap: '12px'}}>
@@ -664,4 +675,3 @@ export default function App() {
     </>
   );
 }
-
