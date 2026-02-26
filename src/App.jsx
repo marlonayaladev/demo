@@ -62,18 +62,16 @@ const ST = {
 // =====================================================================
 const RAW_PERMISOS_REN = [
   { id: "E-1.1", name: "Se permite el empleo de la fuerza, hasta el nivel letal de armas de fuego pequeñas y ligeras, en defensa propia, contra objetivos militares; durante el cumplimiento de sus deberes y funciones", type: ST.LIBERADA_LEY },
-  { id: "E-1.1.1", name: "Se permite el empleo de la fuerza, hasta el nivel letal de armas de fuego pequeñas y ligeras, en defensa propia, contra objetivos militares; durante el cumplimiento de sus deberes y funciones.1", type: ST.LIBERADA },
-  { id: "E-1.1.2", name: "Se permite el empleo de la fuerza, hasta el nivel letal de armas de fuego pequeñas y ligeras, en defensa propia, contra objetivos militares; durante el cumplimiento de sus deberes y funciones.2", type: ST.LIBERADA },
-  { id: "E-1.2", name: "Se permite el empleo de la fuerza, hasta el nivel letal de armas de fuego pequeñas y ligeras, en defensa de la Unidad, contra objetivos militares; durante el cumplimiento de sus deberes y funciones", type: ST.LIBERADA_LEY },
+  { id: "E-1.2", name: "Se permite el empleo de la fuerza, hasta el nivel letal de armas de fuego pequeñas y ligeras, en defensa propia, contra objetivos militares; durante el cumplimiento de sus deberes y funciones.1", type: ST.LIBERADA },
+
+
   { id: "E-2.1", name: "Se permite el empleo de la fuerza, hasta el nivel letal de armas de fuego pequeñas y ligeras; contra objetivos militares; para la protección y defensa de terceras personas (civiles, miembros de la PNP y otros miembros de las Fuerzas Armadas).", type: ST.LIBERADA },
   { id: "E-2.2", name: "Se permite el empleo de la fuerza, hasta el nivel letal de armas convencionales y otras capacidades de nivel operacional; contra objetivos militares; para la protección y defensa de terceras personas (civiles, miembros de la PNP y otros miembros de las Fuerzas Armadas).", type: ST.LIBERADA },
-  { id: "E-2.2.1", name: "Se permite el empleo de la fuerza, hasta el nivel letal de armas convencionales de nivel operacional, y otras capacidades de este nivel; contra objetivos militares; para la protección y defensa de terceras personas (civiles, miembros de la PNP y otros miembros de las Fuerzas Armadas).", type: ST.LIBERADA },
-  { id: "E-2.2.2", name: "Se permite el empleo de la fuerza, hasta el nivel letal de armas pesadas; contra objetivos militares; para la protección y defensa de terceras personas (civiles, miembros de la PNP y otros miembros de las Fuerzas Armadas).", type: ST.LIBERADA },
+  
   { id: "E-2.3", name: "Se permite el empleo de la fuerza hasta el nivel letal de armas convencionales y otras capacidades de nivel estratégico; contra objetivos militares; para la protección y defensa de terceras personas (civiles, miembros de la PNP y otros miembros de las Fuerzas Armadas).", type: ST.LIBERADA },
   { id: "E-3.1", name: "Se permite el empleo de la fuerza, hasta el nivel letal de las armas de fuego pequeñas y ligeras; contra objetivos militares; para el cumplimiento de la misión.", type: ST.LIBERADA },
   { id: "E-3.2", name: "Se permite el empleo de la fuerza, hasta el nivel letal de las armas pesadas y convencionales de nivel operacional y otras capacidades; contra objetivos militares; para el cumplimiento de la misión.", type: ST.LIBERADA },
-  { id: "E-3.2.1", name: "Se permite el empleo de la fuerza, hasta el nivel letal de armas convencionales de nivel operacional, y otras capacidades de este nivel; contra objetivos militares; para el cumplimiento de la misión.", type: ST.LIBERADA },
-  { id: "E-3.2.2", name: "Se permite el empleo de la fuerza, hasta el nivel letal de armas pesadas; contra objetivos militares; para el cumplimiento de la misión.", type: ST.LIBERADA },
+ 
   { id: "E-3.3", name: "Se permite el empleo de la fuerza hasta el nivel letal de las armas convencionales y otras capacidades de nivel estratégico; contra objetivos militares; para el cumplimiento de la misión.", type: ST.LIBERADA },
   { id: "E-3.4", name: "Se permite el empleo de la fuerza, hasta el nivel letal; contra objetivos militares (personas) que, durante el cumplimiento de la misión, estando fuera de combate, pongan en peligro inminente de muerte o lesiones graves a otras personas.", type: ST.LIBERADA },
   { id: "E-4.1", name: "Se permite el empleo de la fuerza, hasta el nivel letal de armas de fuego pequeñas y ligeras; contra los integrantes de grupos hostiles, que interfieran con la libertad de movimiento y el de tránsito de terceras personas.", type: ST.LIBERADA },
