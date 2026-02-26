@@ -662,6 +662,7 @@ export default function MainApp() {
         <GlobalStyles />
         <div className="login-wrapper">
           <div className="login-box" style={{maxWidth: '600px'}}>
+            <img src="logo.png" alt="" srcset="" width={150} height={150} />
             <h1 style={{ color: '#f8fafc', fontSize: '22px', margin: '0 0 8px 0', letterSpacing: '1px' }}>SISTEMA DE CONDUCTA OPERATIVA</h1>
             <h2 style={{ color: '#64748b', fontSize: '13px', margin: '0 0 40px 0', fontWeight: '400' }}>Seleccione el marco normativo aplicable a la misión</h2>
             
